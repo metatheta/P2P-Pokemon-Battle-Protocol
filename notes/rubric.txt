@@ -9,8 +9,8 @@ RESTRICTIONS:
 - we need to label parts that are ai generated
 
 video demonstration:
-- show the parts that correspond in the grading rubric table
+- show the parts that correspond to the grading rubric table
   per row
-- do a self assessment per row (show the part of the program that proves you did it)
+- do a self assessment per row (show the part of the running program that proves you did it)
 - people don't have to on cam
-- not everyone has to talk, some people can share/edit/talk
+- not everyone has to talk, some people can share screen/edit/talk
