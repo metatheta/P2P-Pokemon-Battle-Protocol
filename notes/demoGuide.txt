@@ -1,0 +1,105 @@
+video demonstration:
+- show the parts that correspond to the grading rubric table
+  per row
+- do a self assessment per row (show the part of the running program that proves you did it)
+- people don't have to on cam
+- not everyone has to talk, some people can share screen/edit/talk
+
+UDP Sockets & Message Handling
+		DESCRIPTION:
+			This criterion evaluates the correct implementation of UDP socket setup, 
+			binding, and the ability to send and receive datagrams efficiently.
+		WHAT TO SHOW:
+		
+Handshake Process
+		DESCRIPTION:
+			This assesses the correct implementation of the handshake for Host, Joiner, 
+			and Spectator roles, including the secure exchange of the seed.
+		WHAT TO SHOW:
+
+Message Serialization
+		DESCRIPTION:
+			This checks if all protocol messages are correctly formatted into the 
+			specified key: value pairs, with proper newline delimiters.
+		WHAT TO SHOW:
+
+Turn-Based Flow
+		DESCRIPTION:
+			This evaluates the flawless implementation of the 4-step turn flow and 
+			correct reversal of the turn order.
+		WHAT TO SHOW:
+
+Win/Loss Condition
+		DESCRIPTION:
+			This assesses whether the game correctly detects when a Pokémon faints 
+			and properly sends the GAME_OVER message.
+		WHAT TO SHOW:
+
+Battle State Synchronization
+		DESCRIPTION:
+			This checks that the battle state, including HP and status effects, 
+			remains perfectly synchronized on both peers throughout the battle.
+		WHAT TO SHOW:
+
+Sequence Numbers & ACKs
+		DESCRIPTION:
+			This evaluates the robust use of sequence numbers and acknowledgements 
+			for all critical battle messages to ensure reliable delivery.
+		WHAT TO SHOW:
+
+Retransmission Logic
+		DESCRIPTION:
+			This assesses the correct implementation of retransmission upon timeout,
+			handling of the retry counter, and the ability to simulate packet loss 
+			for testing.
+		WHAT TO SHOW:
+
+Discrepancy Resolution
+		DESCRIPTION:
+			This checks for the correct detection of discrepancies in 
+			CALCULATION_REPORT and the initiation of the RESOLUTION_REQUEST process.
+		WHAT TO SHOW:
+
+Damage Calculation
+		DESCRIPTION:
+			This evaluates the accurate implementation of the damage formula, 
+			including separate Special Attack and Defense stats.
+		WHAT TO SHOW:
+
+Chat Functionality (Text)
+		DESCRIPTION:
+			This assesses the correct implementation of a plain-text chat feature 
+			that operates asynchronously without disrupting the battle state machine.
+		WHAT TO SHOW:
+
+Chat Functionality (Stickers)
+		DESCRIPTION:
+			This checks the correct handling and display of Base64 encoded sticker 
+			messages, and the ability to save the sticker data to a file.
+		WHAT TO SHOW:
+
+Verbose Mode
+		DESCRIPTION:
+			This evaluates the implementation of verbose mode, which should print 
+			all messages in a delimited fashion. When not in verbose mode, the app 
+			should hide all reliability and error handling messages, but still print 
+			error messages.
+		WHAT TO SHOW:
+
+Readability & Comments
+		DESCRIPTION:
+			This assesses the code's structure, readability, and the presence of 
+			clear, concise comments.
+		WHAT TO SHOW:
+
+Separation of Concerns
+		DESCRIPTION:
+			This checks for a well-structured codebase with clear separation 
+			between components like networking, game logic, and the UI.
+		WHAT TO SHOW:
+
+Bonus Features
+		DESCRIPTION:
+			This is for the implementation of additional features, such as a 
+			Spectator UI or a graphical battle interface.
+		WHAT TO SHOW:

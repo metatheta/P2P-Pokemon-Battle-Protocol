@@ -8,9 +8,3 @@ RESTRICTIONS:
 - we need to cite used open source library or utilities
 - we need to label parts that are ai generated
 
-video demonstration:
-- show the parts that correspond to the grading rubric table
-  per row
-- do a self assessment per row (show the part of the running program that proves you did it)
-- people don't have to on cam
-- not everyone has to talk, some people can share screen/edit/talk

@@ -1,8 +1,13 @@
-- read from csv for the stats and types of each 
++ means done
+- means to do
+
++ read from csv for the stats and types of each 
   pokemon and make it into a data class
-- read from csv for type effectiveness and make 
++ read from csv for type effectiveness and make 
   into a data class  (only 1 monotype pokemon per type)
 - make data classes for the 11 different messages 
   we need to send (note each attribute is a key value pair separated by a new line)
 - make a player class that has a pokemon obj, youTurn bool
 - somehow making sure that the datagrams have proper error handling
++ look at each row in the rubrics table and list it down in demoGuide
+- fill up what to show in demoGuide

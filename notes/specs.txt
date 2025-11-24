@@ -1,0 +1,59 @@
+**GIST OF WHAT WE HAVE TO DO**
+
+Abstract
+- we need a chat feature on top of the game
+- chat feature is supposed to support stickers
+- using UDP is the challenge since it means we need to 
+  a way to make the messages reliable
+- we can probably use the 4 step handshake to ensure
+  reliability every step
+- we need 3 communication roles a Peer-to-Peer mode for direct 
+  one-to-one communication, a Broadcast mode for announcing battle 
+  availability on a local network, and a new Spectator role 
+- note that the spectator role is the bonus
+- do it in the context of Pokemon showdown
+
+Terms
+- Host Peer (initiates the connection and game) (so ig the server)
+  - responsible for listening for datagrams
+  - can send and receive messages
+- Joiner Peer (makes a request to connect to the connection which starts the game)
+  - (challenges the host peer)
+  - can send and receive messages too
+- Battle State
+  - current information in the game (e.g. pokemon health, status effects, and turn order)
+- Spectator Peer
+  - cannot battle, just watches
+  - should be able to receive and send chat messages
+  - the bonus feature
+
+Protocol Architecture
+- peer-to-peer architecture
+- use UDP datagrams
+- 3 communication modes:
+  - Peer-to-Peer Mode
+     - send directly from one peer to another
+     - use known IP address and port to send
+     - standard mode for battle related messages 
+     - use this when the connection is established
+     - I assume the Host and Joiner use this
+     - can send and receive messages 
+     - can send battle related commands
+  - Broadcast Mode
+     - messages are sent to a broadcast address
+     - the receivers are all peers in the LAN
+     - use this mode for peer discovery or for announcing
+       that a game exists
+  - Spectator Mode
+     - to be used by the spectator
+     - in this mode you can only send and receive chat messages
+- Connection Process (making the logical connection
+  - Host creates a socket and start listening
+  - Joiner creates socket and sends a HANDSHAKE_REQUEST
+    to the Host
+  - Host responds with a HANDSHAKE_RESPONSE
+  - after handshaking we can now send messages
+
+
+**END OF GIST**
+
