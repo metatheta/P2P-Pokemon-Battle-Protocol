@@ -1,4 +1,4 @@
-DELIVARABLES:
+DELIVERABLES:
 - source code
 - readme (ask sir Elmar about the task matrix)
 
