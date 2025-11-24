@@ -1,0 +1,9 @@
+DELIVARABLES:
+- source code
+- readme (ask sir Elmar about the task matrix)
+
+RESTRICTIONS:
+- you can only use ai to generate, explain, and debug
+- you still have to understand what was generated
+- we need to cite used open source library or utilities
+- we need to label parts that are ai generated
