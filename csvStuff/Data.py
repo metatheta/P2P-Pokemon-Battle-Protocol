@@ -1,5 +1,5 @@
 import csv
-from Templates import Pokemon
+from Templates import PokemonData
 from Templates import TypeMatchUps
 from Templates import Move
 import random
@@ -9,7 +9,7 @@ import random
 # now every peer (except spectator) can access the pokemon and matchUps
 class Data:
     # static dictionaries for everyones use
-    pokemonDictionary = {}
+    pokemonDataDictionary = {}
     matchUpDictionary = {}
     moveDictionary = {
                         "special fire" : Move("Special", "Fire", "Flamethrower", random.randint(80, 100)),
@@ -27,13 +27,13 @@ class Data:
                         "special ghost": Move("Special", "Ghost", "Hex", random.randint(80, 100)),
                         "special ground": Move("Special", "Ground", "Mud Shot", random.randint(80, 100)),
                         "special normal": Move("Special", "Normal", "Uproar", random.randint(80, 100)),
-                        "special Poison": Move("Special", "Poison", "Venoshock", random.randint(80, 100)),
+                        "special poison": Move("Special", "Poison", "Venoshock", random.randint(80, 100)),
                         "special rock": Move("Special", "Rock", "Power Gem", random.randint(80, 100)),
-                        "special steel": Move("Special", "steel", "Flash Cannon", random.randint(80, 100)),
+                        "special steel": Move("Special", "Steel", "Flash Cannon", random.randint(80, 100)),
                         "physical fire": Move("Physical", "Fire", "Flame Charge", random.randint(80, 100)),
                         "physical water": Move("Physical", "Water", "Aqua Jet", random.randint(80, 100)),
                         "physical grass": Move("Physical", "Grass", "Leaf Blade", random.randint(80, 100)),
-                        "physical electric": Move("Physical", "Electrtic", "Volt Tackle", random.randint(80, 100)),
+                        "physical electric": Move("Physical", "Electric", "Volt Tackle", random.randint(80, 100)),
                         "physical ice": Move("Physical", "Ice", "Glacial Lance", random.randint(80, 100)),
                         "physical dark": Move("Physical", "Dark", "Night Slash", random.randint(80, 100)),
                         "physical psychic": Move("Physical", "Psychic", "Psyblade", random.randint(80, 100)),
@@ -49,9 +49,15 @@ class Data:
                         "physical rock": Move("Physical", "Rock", "Stone Edge", random.randint(80, 100)),
                         "physical steel": Move("Physical", "Steel", "Iron Head", random.randint(80, 100))
                      }
-
+    # method to get the matchUp multiplicity given the 
+    # attacker's type and the defender's type
+    @staticmethod
+    def matchUpMultiplier(attackerType: str, defenderType: str):
+        defender_matchups = Data.matchUpDictionary[defenderType.lower()]
+        return getattr(defender_matchups, attackerType.lower())
+    
     # method that reads all the pokemon from the csv file
-    def populatePokemon(self):
+    def populatePokemonData(self):
         with open('pokemon.csv', 'r') as file:
             reader = csv.DictReader(file)
             
@@ -66,9 +72,9 @@ class Data:
                 type1 = row["type1"]
                 type2 = row["type2"]
 
-                p = Pokemon(name, hp, attack, defense, spatt, spdef, type1, type2)
+                p = PokemonData(name, hp, attack, defense, spatt, spdef, type1, type2)
 
-                Data.pokemonDictionary[name.lower()] = p
+                Data.pokemonDataDictionary[name.lower()] = p
     
     # methods that reads the first 18 monotype pokemon
     # from the csv and records the type match up

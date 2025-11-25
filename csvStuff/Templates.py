@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 # made a data class to represent a pokemon
 @dataclass(frozen=True)
-class Pokemon:
+class PokemonData:
     name: str 
     hp: int 
     attack: int 

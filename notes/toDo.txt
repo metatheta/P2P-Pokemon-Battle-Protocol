@@ -1,13 +1,37 @@
 + means done
-- means to do
+- means not yet done
 
-+ read from csv for the stats and types of each 
++ read from csv to get the stats (hp, att, def, special att, and special def)
+  and types (first type and second type if there is), and name of each 
   pokemon and make it into a data class
-+ read from csv for type effectiveness and make 
-  into a data class  (only 1 monotype pokemon per type)
-- make data classes for the 11 different messages 
++ placed all the contents into a dictionary where the key is the name of the 
+  pokemon in lower case and the value is the Pokémon data class
+
++ read from csv for type match ups (data came from the monotype pokemon)
++ placed all contents into a dicitonary where the key is the name of the type
+  and the value is the MatchUps data class  
++ made a static method that gets the match up multiplicity given the
+  attacker's type and the defender's type
+
++ made a data class called moves which stores the name of the move, it's type
+  it's category, and its base power
++ made a dictionary for the moves and populated it with a move per category
+  per type, the key is *category* + ' ' + *type* and the value is the Move data Class
+
++ made data classes for the 11 different messages 
   we need to send (note each attribute is a key value pair separated by a new line)
-- make a player class that has a pokemon obj, youTurn bool
-- somehow making sure that the datagrams have proper error handling
+
 + look at each row in the rubrics table and list it down in demoGuide
-- fill up what to show in demoGuide
+- fill up the "what to show" in demoGuide
+
+- some interface so the player can enter their name and choose their pokemon
+- also something so the player can choose what moves their pokemon can have
+- also some interface so that the player chooses what move their pokemon
+  will use in a turn
+
+- implement an interface so the user can chat when they feel like it
+
+- cite the open source libraries used
+
+-
+
