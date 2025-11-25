@@ -36,7 +36,7 @@ class SpectatorRequest(Message):
 @dataclass
 class BattleSetup(Message):
     message_type = field(init=False, default="BATTLE_SETUP")
-    communication_mode = "P2P"
+    communication_mode = field(init=False, default="P2P")
     pokemon_name: str
     stat_boosts = field(init=False, default={"special_attack_uses": 5, "special_defense_uses": 5})
     pokemon: Pokemon
