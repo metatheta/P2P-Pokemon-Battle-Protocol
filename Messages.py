@@ -1,42 +1,60 @@
 from dataclasses import dataclass
+from dataclasses import asdict
+from dataclasses import field
 from csvStuff.Templates import Pokemon
 
+# this it the parent class that has the message_type
+# and the toMessageFormat() method
 @dataclass
-class HandshakeRequest:
-    message_type = "HANDSHAKE_REQUEST"
+class Message:
+    message_type: str
+
+    def toMessageFormat(self) -> str:
+        m = asdict(self)
+        result = ""
+
+        for k, v in m.items():
+            result += f'{k}: {v}\n'
+
+        return result
+
 
 @dataclass
-class HandshakeResponse:
-    message_type = "HANDSHAKE_RESPONSE"
+class HandshakeRequest(Message):
+    message_type = field(init=False, default="HANDSHAKE_REQUEST")
+
+@dataclass
+class HandshakeResponse(Message):
+    message_type = field(init=False, default="HANDSHAKE_RESPONSE")
     seed: int
 
 @dataclass
-class SpectatorRequest:
-    message_type = "SPECTATOR_REQUEST"
+class SpectatorRequest(Message):
+    message_type = field(init=False, default="SPECTATOR_REQUEST")
 
 # TODO: CHANGE STAT BOOSTS WHEN SIR ELMAR REPLIES
 @dataclass
-class BattleSetup:
-    message_type = "BATTLE_SETUP"
+class BattleSetup(Message):
+    message_type = field(init=False, default="BATTLE_SETUP")
     communication_mode = "P2P"
     pokemon_name: str
-    stat_boosts = {"special_attack_uses": 5, "special_defense_uses": 5}
+    stat_boosts = field(init=False, default={"special_attack_uses": 5, "special_defense_uses": 5})
     pokemon: Pokemon
     
 @dataclass
-class AttackAnnounce:
-    message_type = "ATTACK_ANNOUNCE"
+class AttackAnnounce(Message):
+    message_type = field(init=False, default="ATTACK_ANNOUNCE")
     move_name: str
     sequence_number: int
 
 @dataclass
-class DefenseAnnounce:
-    message_type = "DEFENSE_ANNOUNCE"
+class DefenseAnnounce(Message):
+    message_type = field(init=False, default="DEFENSE_ANNOUNCE")
     sequence_number: int
 
 @dataclass
-class CalculationReport:
-    message_type = "CALCULATION_REPORT"
+class CalculationReport(Message):
+    message_type = field(init=False, default="CALCULATION_REPORT")
     attacker: str
     move_used: str
     remaining_health: int
@@ -46,13 +64,13 @@ class CalculationReport:
     sequence_number: int   
 
 @dataclass
-class CalculationConfirm:
-    message_type = "CALCULATION_CONFIRM"
+class CalculationConfirm(Message):
+    message_type = field(init=False, default="CALCULATION_CONFIRM")
     sequence_number: int
 
 @dataclass
-class ResolutionRequest:
-    message_type = "RESOLUTION_REQUEST"
+class ResolutionRequest(Message):
+    message_type = field(init=False, default="RESOLUTION_REQUEST")
     attacker: str
     move_used: str
     damage_dealt: int
@@ -60,25 +78,25 @@ class ResolutionRequest:
     sequence_number: int
 
 @dataclass
-class GameOver:
-    message_over = "GAME_OVER"
+class GameOver(Message):
+    message_over = field(init=False, default="GAME_OVER")
     winner: str
     loser: str
     sequence_number: int
 
 @dataclass
-class TextMessage:
-    message_type = "CHAT_MESSAGE"
+class TextMessage(Message):
+    message_type = field(init=False, default="CHAT_MESSAGE")
     sender_name: str
-    content_type = "TEXT"
+    content_type = field(init=False, default="TEXT")
     message_text: str
     sequence_number: int
 
 # TODO: CHANGE STICKER DATA TO PROPER TYPE
 @dataclass
-class StickerMessage:
-    message_type = "CHAT_MESSAGE"
+class StickerMessage(Message):
+    message_type = field(init=False, default="CHAT_MESSAGE")
     sender_name: str
-    content_type = "STICKER"
+    content_type = field(init=False, default="STICKER")
     sticker_data: any
     sequence_number: int
