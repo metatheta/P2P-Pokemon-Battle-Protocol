@@ -18,7 +18,7 @@ class Data:
                         "special electric": Move("Special", "Electric", "Thunderbolt", random.randint(80, 100)),
                         "special ice": Move("Special", "Ice", "Aurora Beam", random.randint(80, 100)),
                         "special dark": Move("Special", "Dark", "Dark Pulse", random.randint(80, 100)),
-                        "special psychic": Move("Special", "Psychic", "Psychic", random.randint(80, 100)),
+                        "special psychic": Move("Special", "Psychic", "Future Sight", random.randint(80, 100)),
                         "special fairy": Move("Special", "Fairy", "Dazzling Gleam", random.randint(80, 100)),
                         "special flying": Move("Special", "Flying", "Hurricane", random.randint(80, 100)),
                         "special bug": Move("Special", "Bug", "Pollen Puff", random.randint(80, 100)),
