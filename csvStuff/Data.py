@@ -68,7 +68,7 @@ class Data:
 
                 p = Pokemon(name, hp, attack, defense, spatt, spdef, type1, type2)
 
-                Data.pokemonDictionary[name] = p
+                Data.pokemonDictionary[name.lower()] = p
     
     # methods that reads the first 18 monotype pokemon
     # from the csv and records the type match up
@@ -107,7 +107,7 @@ class Data:
                     t = TypeMatchUps(firstType, bug, dark, dragon, electric, fairy, fighting, fire, flying,
                                         ghost, grass, ground, ice, normal, poison, psychic, rock, steel, water)
                     
-                    Data.matchUpDictionary[firstType] = t
+                    Data.matchUpDictionary[firstType.lower()] = t
 
                     typesToComplete.remove(firstType)
 
