@@ -35,3 +35,12 @@ class TypeMatchUps:
     rock: float
     steel: float
     water: float
+
+@dataclass(frozen=True)
+class Move:
+    category: str
+    moveType: str
+    name: str
+    basePower: int
+    
+

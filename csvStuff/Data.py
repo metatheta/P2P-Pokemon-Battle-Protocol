@@ -1,14 +1,56 @@
 import csv
 from Templates import Pokemon
 from Templates import TypeMatchUps
+from Templates import Move
+import random
 
 # a class the Host and Joiner Peers can use
 # the host calls populatePokemon() and populateMatchUps() once
 # now every peer (except spectator) can access the pokemon and matchUps
 class Data:
+    # static dictionaries for everyones use
     pokemonDictionary = {}
     matchUpDictionary = {}
+    moveDictionary = {
+                        "special fire" : Move("Special", "Fire", "Flamethrower", random.randint(80, 100)),
+                        "special water": Move("Special", "Water", "Hydro Pump", random.randint(80, 100)),
+                        "special grass": Move("Special", "Grass", "Frenzy Plant", random.randint(80, 100)),
+                        "special electric": Move("Special", "Electric", "Thunderbolt", random.randint(80, 100)),
+                        "special ice": Move("Special", "Ice", "Aurora Beam", random.randint(80, 100)),
+                        "special dark": Move("Special", "Dark", "Dark Pulse", random.randint(80, 100)),
+                        "special psychic": Move("Special", "Psychic", "Psychic", random.randint(80, 100)),
+                        "special fairy": Move("Special", "Fairy", "Dazzling Gleam", random.randint(80, 100)),
+                        "special flying": Move("Special", "Flying", "Hurricane", random.randint(80, 100)),
+                        "special bug": Move("Special", "Bug", "Pollen Puff", random.randint(80, 100)),
+                        "special dragon": Move("Special", "Dragon", "Draco Meteor", random.randint(80, 100)),
+                        "special fighting": Move("Special", "Fighting", "Aura Sphere", random.randint(80, 100)),
+                        "special ghost": Move("Special", "Ghost", "Hex", random.randint(80, 100)),
+                        "special ground": Move("Special", "Ground", "Mud Shot", random.randint(80, 100)),
+                        "special normal": Move("Special", "Normal", "Uproar", random.randint(80, 100)),
+                        "special Poison": Move("Special", "Poison", "Venoshock", random.randint(80, 100)),
+                        "special rock": Move("Special", "Rock", "Power Gem", random.randint(80, 100)),
+                        "special steel": Move("Special", "steel", "Flash Cannon", random.randint(80, 100)),
+                        "physical fire": Move("Physical", "Fire", "Flame Charge", random.randint(80, 100)),
+                        "physical water": Move("Physical", "Water", "Aqua Jet", random.randint(80, 100)),
+                        "physical grass": Move("Physical", "Grass", "Leaf Blade", random.randint(80, 100)),
+                        "physical electric": Move("Physical", "Electrtic", "Volt Tackle", random.randint(80, 100)),
+                        "physical ice": Move("Physical", "Ice", "Glacial Lance", random.randint(80, 100)),
+                        "physical dark": Move("Physical", "Dark", "Night Slash", random.randint(80, 100)),
+                        "physical psychic": Move("Physical", "Psychic", "Psyblade", random.randint(80, 100)),
+                        "physical fairy": Move("Physical", "Fairy", "Play Rough", random.randint(80, 100)),
+                        "physical flying": Move("Physical", "Flying", "Drill Peck", random.randint(80, 100)),
+                        "physical bug": Move("Physical", "Bug", "Fell Stinger", random.randint(80, 100)),
+                        "physical dragon": Move("Physical", "Dragon", "Dragon Rush", random.randint(80, 100)),
+                        "physical fighting": Move("Physical", "Fighting", "Hammer Arm", random.randint(80, 100)),
+                        "physical ghost": Move("Physical", "Ghost", "Poltergeist", random.randint(80, 100)),
+                        "physical ground": Move("Physical", "Ground", "Earthquake", random.randint(80, 100)),
+                        "physical normal": Move("Physical", "Normal", "Giga Impact", random.randint(80, 100)),
+                        "physical poison": Move("Physical", "Poison", "Cross Poison", random.randint(80, 100)),
+                        "physical rock": Move("Physical", "Rock", "Stone Edge", random.randint(80, 100)),
+                        "physical steel": Move("Physical", "Steel", "Iron Head", random.randint(80, 100))
+                     }
 
+    # method that reads all the pokemon from the csv file
     def populatePokemon(self):
         with open('pokemon.csv', 'r') as file:
             reader = csv.DictReader(file)
@@ -28,6 +70,8 @@ class Data:
 
                 Data.pokemonDictionary[name] = p
     
+    # methods that reads the first 18 monotype pokemon
+    # from the csv and records the type match up
     def populateMatchUps(self):
         with open('pokemon.csv', 'r') as file:
             reader = csv.DictReader(file)
@@ -67,5 +111,6 @@ class Data:
 
                     typesToComplete.remove(firstType)
 
+                    # exit loop if no types left to complete
                     if len(typesToComplete) == 0:
                         break
