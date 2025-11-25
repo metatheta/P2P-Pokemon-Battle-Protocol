@@ -3,23 +3,25 @@ import socket
 # made a class to handle the networking stuff
 class Transport:
     sequenceNumber = 0
-    ip = "127.0.0.1"
     bytesToRead = 4096
+    broadcastIP = "255.255.255.255"
+    broadcastPort = 8618
+    localBindIP = "0.0.0.0"
 
     # it takes port numbers as parameters 
     # it should make the socket and bind to the 
     # socket on creation
-    def __init__(self, yourPort, theirPort):
-        self.yourPort = yourPort
-        self.theirPort = theirPort
+    def __init__(self, yourPortNumber):
+        self.yourPortNumber = yourPortNumber
         self.yourSocket = self.makeSocket()
         self.bind()
-        
+        self.senderInfo = None
+
     def makeSocket(self):
         return socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
+    
     def bind(self):
-        self.yourSocket.bind((Transport.ip, self.yourPort))
+        self.yourSocket.bind((Transport.localBindIP, self.yourPortNumber))
 
     # this is a method that should be called when making
     # the message, it updates the sequence number and
@@ -31,12 +33,12 @@ class Transport:
     # it has a method to send messages, having the
     # string representation of the message as parameter
     def send(self, message: str):
-        self.yourSocket.sendto(message.encode(), (Transport.ip, self.theirPort))
+        self.yourSocket.sendto(message.encode(), self.senderInfo)
 
     # it can also receive messages and pass the contents
     # of the message as a string
     def receive(self):
-        bytesReceived, senderInfo = self.yourSocket.recvfrom(Transport.bytesToRead)
+        bytesReceived, self.senderInfo = self.yourSocket.recvfrom(Transport.bytesToRead)
         content = bytesReceived.decode()
         return content
 
@@ -45,4 +47,33 @@ class Transport:
     def close(self):
         self.yourSocket.close()
 
-        
+class Host(Transport):
+    def __init__(self, yourPortNumber):
+        super().__init__(yourPortNumber)
+
+    # method that allows the Host to initiate a game
+    # by broadcasting
+    def broadcast(self):
+        temp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        temp.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        temp.sendto("message_type: BROADCAST".encode(), (Transport.broadcastIP, Transport.broadcastPort))
+        temp.close()
+
+class Joiner(Transport):
+    def __init__(self, yourPortNumber):
+        super().__init__(yourPortNumber)
+
+    # a function that makes a temporary socket that we bind
+    # to the broadcastIP and agreed upon broadcast port
+    def waitForBroadcast(self):
+        broadcastSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        broadcastSocket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        broadcastSocket.bind((Transport.broadcastIP, Transport.broadcastPort))
+
+        while True:
+            bits, self.senderInfo = broadcastSocket.recvfrom(Transport.bytesToRead)
+            content = bits.decode()
+
+            if "BROADCAST" in content:
+                broadcastSocket.close()
+                break
