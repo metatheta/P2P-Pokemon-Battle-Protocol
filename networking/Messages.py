@@ -26,7 +26,6 @@ class HandshakeRequest(Message):
 @dataclass
 class HandshakeResponse(Message):
     message_type = field(init=False, default='HANDSHAKE_RESPONSE')
-    seed: int
 
 @dataclass
 class SpectatorRequest(Message):

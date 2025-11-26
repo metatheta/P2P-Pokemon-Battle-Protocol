@@ -35,3 +35,6 @@
 
 - make Pokémon class, should be a wrapper for PokemonData and Moves
 
+- make Peer.py deal with checking for proper sequence numbers and
+  maximum number of retrys
+

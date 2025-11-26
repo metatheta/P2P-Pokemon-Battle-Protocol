@@ -1,7 +1,6 @@
 from networking.Transport import HostTransport
 from networking.Transport import JoinerTransport
 from networking.Messages import *
-import random
 
 class Peer:
     def __init__(self):
@@ -133,8 +132,7 @@ class Peer:
 
 
     def sendHandshakeResponse(self):
-        randomSeed = random.randint(1, 100)
-        message = HandshakeResponse(seed=randomSeed).toMessageFormat()
+        message = HandshakeResponse().toMessageFormat()
         self.transport.sendToPeer(message)  
 
     def sendAttackAnnounce(self, movedUsed: str):
