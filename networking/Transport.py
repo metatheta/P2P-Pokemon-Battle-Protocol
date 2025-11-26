@@ -47,7 +47,7 @@ class Transport:
     def close(self):
         self.yourSocket.close()
 
-class Host(Transport):
+class HostTransport(Transport):
     def __init__(self, yourPortNumber):
         super().__init__(yourPortNumber)
 
@@ -59,7 +59,7 @@ class Host(Transport):
         temp.sendto("message_type: BROADCAST".encode(), (Transport.broadcastIP, Transport.broadcastPort))
         temp.close()
 
-class Joiner(Transport):
+class JoinerTransport(Transport):
     def __init__(self, yourPortNumber):
         super().__init__(yourPortNumber)
 

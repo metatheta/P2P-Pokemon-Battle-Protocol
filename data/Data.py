@@ -72,7 +72,7 @@ class Data:
                 type1 = row["type1"]
                 type2 = row["type2"]
 
-                p = PokemonData(name, hp, attack, defense, spatt, spdef, type1, type2)
+                p = PokemonData(name, hp, attack, defense, spatt, spdef, type1.capitalize(), type2.capitalize())
 
                 Data.pokemonDataDictionary[name.lower()] = p
     
@@ -87,7 +87,7 @@ class Data:
             
             for row in reader:
 
-                firstType = row["type1"]
+                firstType = row["type1"].lower()
 
                 if firstType in typesToComplete and not row["type2"]:
                 
@@ -110,10 +110,10 @@ class Data:
                     steel = float(row["against_steel"])
                     water = float(row["against_water"])
 
-                    t = TypeMatchUps(firstType, bug, dark, dragon, electric, fairy, fighting, fire, flying,
+                    t = TypeMatchUps(firstType.capitalize(), bug, dark, dragon, electric, fairy, fighting, fire, flying,
                                         ghost, grass, ground, ice, normal, poison, psychic, rock, steel, water)
                     
-                    Data.matchUpDictionary[firstType.lower()] = t
+                    Data.matchUpDictionary[firstType] = t
 
                     typesToComplete.remove(firstType)
 
