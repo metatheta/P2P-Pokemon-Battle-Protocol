@@ -35,7 +35,3 @@
 
 - make Pokémon class, should be a wrapper for PokemonData and Moves
 
-- make State Classes (my guess is its a wrapper class for a specific messages being sent)
-
-- make Host and Joiner files which have a Pokémon, State, and Transport class 
-
