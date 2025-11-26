@@ -26,8 +26,14 @@ class Transport:
     # this is a method that should be called when making
     # the message, it updates the sequence number and
     # returns the sequence number to use
-    def useNewSequenceNumber(self):
+    def updateAndGetSequenceNumber(self):
         Transport.sequenceNumber += 1
+        return Transport.sequenceNumber
+    
+    # this is a method the should be called when comparing
+    # the received message's sequence number to our record of sequence number
+    # returns sequence number
+    def getSequenceNumber(self):
         return Transport.sequenceNumber
     
     # it has a method to send messages, having the
