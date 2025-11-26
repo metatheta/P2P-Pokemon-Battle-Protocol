@@ -1,4 +1,5 @@
 import socket
+from Messages import *
 
 # made a class to handle the networking stuff
 class Transport:
@@ -38,7 +39,7 @@ class Transport:
     
     # it has a method to send messages, having the
     # string representation of the message as parameter
-    def send(self, message: str):
+    def sendToPeer(self, message: str):
         self.yourSocket.sendto(message.encode(), self.senderInfo)
 
     # it can also receive messages and pass the contents
@@ -74,7 +75,7 @@ class JoinerTransport(Transport):
     def waitForBroadcast(self):
         broadcastSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         broadcastSocket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        broadcastSocket.bind((Transport.broadcastIP, Transport.broadcastPort))
+        broadcastSocket.bind((Transport.localBindIP, Transport.broadcastPort))
 
         while True:
             bits, self.senderInfo = broadcastSocket.recvfrom(Transport.bytesToRead)
