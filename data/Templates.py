@@ -43,4 +43,9 @@ class Move:
     name: str
     basePower: int
     
+class Pokemon:
+    def __init__(self, pokemonData, moves):
+        self.pokemonData = pokemonData
+        self.moves = moves
 
+    
