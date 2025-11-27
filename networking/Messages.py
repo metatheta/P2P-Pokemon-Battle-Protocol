@@ -20,44 +20,44 @@ class Message:
 
 @dataclass
 class Acknowledgement(Message):
-    message_type = field(init=False, default='ACKNOWLEDGEMENT')
-    ackNumber = int
+    message_type: str = field(init=False, default='ACKNOWLEDGEMENT')
+    ackNumber: int
 
 @dataclass
 class HandshakeRequest(Message):
-    message_type = field(init=False, default='HANDSHAKE_REQUEST')
+    message_type: str = field(init=False, default='HANDSHAKE_REQUEST')
 
 @dataclass
 class HandshakeResponse(Message):
-    message_type = field(init=False, default='HANDSHAKE_RESPONSE')
+    message_type: str = field(init=False, default='HANDSHAKE_RESPONSE')
 
 @dataclass
 class SpectatorRequest(Message):
-    message_type = field(init=False, default='SPECTATOR_REQUEST')
+    message_type: str = field(init=False, default='SPECTATOR_REQUEST')
 
 # TODO: CHANGE STAT BOOSTS WHEN SIR ELMAR REPLIES
 @dataclass
 class BattleSetup(Message):
-    message_type = field(init=False, default='BATTLE_SETUP')
-    communication_mode = field(init=False, default="P2P")
+    message_type: str = field(init=False, default='BATTLE_SETUP')
+    communication_mode: str = field(init=False, default="P2P")
     pokemon_name: str
     stat_boosts = field(init=False, default={'special_attack_uses': 5, 'special_defense_uses': 5})
     pokemon: Pokemon
     
 @dataclass
 class AttackAnnounce(Message):
-    message_type = field(init=False, default='ATTACK_ANNOUNCE')
+    message_type: str = field(init=False, default='ATTACK_ANNOUNCE')
     move_name: str
     sequence_number: int
 
 @dataclass
 class DefenseAnnounce(Message):
-    message_type = field(init=False, default='DEFENSE_ANNOUNCE')
+    message_type: str = field(init=False, default='DEFENSE_ANNOUNCE')
     sequence_number: int
 
 @dataclass
 class CalculationReport(Message):
-    message_type = field(init=False, default='CALCULATION_REPORT')
+    message_type: str = field(init=False, default='CALCULATION_REPORT')
     attacker: str
     move_used: str
     remaining_health: int
@@ -68,12 +68,12 @@ class CalculationReport(Message):
 
 @dataclass
 class CalculationConfirm(Message):
-    message_type = field(init=False, default='CALCULATION_CONFIRM')
+    message_type: str = field(init=False, default='CALCULATION_CONFIRM')
     sequence_number: int
 
 @dataclass
 class ResolutionRequest(Message):
-    message_type = field(init=False, default='RESOLUTION_REQUEST')
+    message_type: str = field(init=False, default='RESOLUTION_REQUEST')
     attacker: str
     move_used: str
     damage_dealt: int
@@ -82,24 +82,24 @@ class ResolutionRequest(Message):
 
 @dataclass
 class GameOver(Message):
-    message_type = field(init=False, default='GAME_OVER')
+    message_type: str = field(init=False, default='GAME_OVER')
     winner: str
     loser: str
     sequence_number: int
 
 @dataclass
 class TextMessage(Message):
-    message_type = field(init=False, default='CHAT_MESSAGE')
+    message_type: str = field(init=False, default='CHAT_MESSAGE')
     sender_name: str
-    content_type = field(init=False, default='TEXT')
+    content_type: str = field(init=False, default='TEXT')
     message_text: str
     sequence_number: int
 
 # TODO: CHANGE STICKER DATA TO PROPER TYPE
 @dataclass
 class StickerMessage(Message):
-    message_type = field(init=False, default='CHAT_MESSAGE')
+    message_type: str = field(init=False, default='CHAT_MESSAGE')
     sender_name: str
-    content_type = field(init=False, default='STICKER')
+    content_type: str = field(init=False, default='STICKER')
     sticker_data: any
     sequence_number: int
