@@ -2,10 +2,15 @@ from networking.Transport import HostTransport
 from networking.Transport import JoinerTransport
 from networking.Messages import *
 
+# TODO: I realize how messed up the entire stucture is
+# we probably need 2 threads each witht their own listening loop
+# one for the main messages and another one for the acknowledgement 
+# messages (tldr holy refactor bruh)
 class Peer:
     def __init__(self):
         self.transport = None
         self.name = None
+        self.retransmissionCount = 0
 
     # a start method for the peer which gets the name
     # and the choice of the user that tells us if they want
@@ -53,7 +58,7 @@ class Peer:
                         'message_type': 'justToEnterLoop'
                    }
 
-        while(not loopDict['message_type'] == 'GAME_OVER'):
+        while(not loopDict['message_type'] == 'GAME_OVER' and self.validRetransmissionCount()):
 
             # get the message from receive and store it in out tempDict
             message = self.transport.receive()
@@ -90,16 +95,19 @@ class Peer:
                 # if we receive an attack announce, we send the 
                 # acknowledgement known as the defense announce
                 case 'ATTACK_ANNOUNCE':
+                    self.sendAcknowledgement(loopDict['sequence_number'])
                     self.sendDefenseAnnounce()
 
                 # if we receive a defense announce, we send the 
                 # acknowledgement known as the calculation report
                 case 'DEFENSE_ANNOUNCE':
+                    self.sendAcknowledgement(loopDict['sequence_number'])
                     # function call to send a calculation report
 
                 # if we receive a calculation report, we check
                 # if the report matches our report
                 case 'CALCULATION_REPORT':
+                    self.sendAcknowledgement(loopDict['sequence_number'])
                     if # function call that compares contents of calculation report
                         # function call to make calculations
                         # function call to send a calculation confirm
@@ -112,36 +120,52 @@ class Peer:
                 # since this the end of the 4 way acknowledgement 
                 # we dont have to do anything anymore
                 case 'CALCULATION_CONFIRM':
+                    self.sendAcknowledgement(loopDict['sequence_number'])
                     # print stuff idk
 
                 # if we receive a resolution request, we need to
                 # recalculate and resend the calculation report
                 case 'RESOLUTION_REQUEST':
+                    self.sendAcknowledgement(loopDict['sequence_number'])
                     # function call to make calculations
                     # function call to send a calculation report
                 
                 # if we receive a chat message, we first check if
                 # its text or a sticker, idk what to do from there
                 case 'CHAT_MESSAGE':
+                    self.sendAcknowledgement(loopDict['sequence_number'])
                     match loopDict['content_type']:
                         case 'TEXT':
                         
                         case 'STICKER':
 
 
+    def resetRetransmissionCount(self):
+        self.retransmissionCount = 0
 
+    def incrementRetransmissionCount(self):
+        self.retransmissionCount += 1
+
+    def validRetransmissionCount(self):
+        return self.retransmissionCount < 4
+    
+    def sendAcknowledgement(self, sequenceNumber):
+        message = Acknowledgement(ackNumber = sequenceNumber).toMessageFormat()
+        self.transport.sendToPeer(message)
 
     def sendHandshakeResponse(self):
+        self.resetRetransmissionCount()
         message = HandshakeResponse().toMessageFormat()
         self.transport.sendToPeer(message)  
 
     def sendAttackAnnounce(self, movedUsed: str):
+        self.resetRetransmissionCount()
         sn = self.transport.updateAndGetSequenceNumber()
         message = AttackAnnounce(move_name=movedUsed, sequence_number=sn).toMessageFormat()
         self.transport.sendToPeer(message)
 
     def sendDefenseAnnounce(self):
+        self.resetRetransmissionCount()
         sn = self.transport.updateAndGetSequenceNumber()
         message = DefenseAnnounce(sequence_number=sn).toMessageFormat()
         self.transport.sendToPeer(message)
-

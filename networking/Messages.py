@@ -18,6 +18,10 @@ class Message:
 
         return result
 
+@dataclass
+class Acknowledgement(Message):
+    message_type = field(init=False, default='ACKNOWLEDGEMENT')
+    ackNumber = int
 
 @dataclass
 class HandshakeRequest(Message):
