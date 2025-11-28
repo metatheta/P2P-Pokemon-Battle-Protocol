@@ -1,7 +1,5 @@
 from dataclasses import dataclass
 from dataclasses import asdict
-from dataclasses import field
-from data.Templates import Pokemon
 
 # this it the parent class that has the message_type
 # and the toMessageFormat() method
@@ -20,19 +18,22 @@ class Message:
 
 @dataclass
 class Acknowledgement(Message):
-    ackNumber: int
     message_type: str = "ACKNOWLEDGEMENT"
 
 @dataclass
-class HandshakeRequest(Message):
+class MainMessage(Message):
+    sequence_number: int
+
+@dataclass
+class HandshakeRequest(MainMessage):
     message_type: str = "HANDSHAKE_REQUEST"
 
 @dataclass
-class HandshakeResponse(Message):
+class HandshakeResponse(MainMessage):
     message_type: str = "HANDSHAKE_RESPONSE"
 
 @dataclass
-class SpectatorRequest(Message):
+class SpectatorRequest(MainMessage):
     message_type: str = "SPECTATOR_REQUEST"
 
 
@@ -43,68 +44,60 @@ class StatBoost():
 
 # TODO: CHANGE STAT BOOSTS WHEN SIR ELMAR REPLIES
 @dataclass
-class BattleSetup(Message):
+class BattleSetup(MainMessage):
     pokemon_name: str
     stat_boosts: StatBoost
     message_type: str = "BATTLE_SETUP"
     communication_mode: str = "P2P"
     
 @dataclass
-class AttackAnnounce(Message):
+class AttackAnnounce(MainMessage):
     move_name: str
-    sequence_number: int
     message_type: str = "ATTACK_ANNOUNCE"
 
 @dataclass
-class DefenseAnnounce(Message):
-    sequence_number: int
+class DefenseAnnounce(MainMessage):
     message_type: str = "DEFENSE_ANNOUNCE"
 
 @dataclass
-class CalculationReport(Message):
+class CalculationReport(MainMessage):
     attacker: str
     move_used: str
     remaining_health: int
     damage_dealt: int
     defender_hp_remaining: int
     status_message: str
-    sequence_number: int
     message_type: str = "CALCULATION_REPORT"
 
 @dataclass
-class CalculationConfirm(Message):
-    sequence_number: int
+class CalculationConfirm(MainMessage):
     message_type: str = "CALCULATION_CONFIRM"
 
 @dataclass
-class ResolutionRequest(Message):
+class ResolutionRequest(MainMessage):
     attacker: str
     move_used: str
     damage_dealt: int
     defender_hp_remaining: int
-    sequence_number: int
     message_type: str = "RESOLUTION_REQUEST"
 
 @dataclass
-class GameOver(Message):
+class GameOver(MainMessage):
     winner: str
     loser: str
-    sequence_number: int
     message_type: str = "GAME_OVER"
 
 @dataclass
-class TextMessage(Message):
+class TextMessage(MainMessage):
     sender_name: str
     message_text: str
-    sequence_number: int
     message_type = "CHAT_MESSAGE"
     content_type = "TEXT"
 
 # TODO: CHANGE STICKER DATA TO PROPER TYPE
 @dataclass
-class StickerMessage(Message):
+class StickerMessage(MainMessage):
     sender_name: str
     sticker_data: any
-    sequence_number: int
     message_type: str = "CHAT MESSAGE"
     content_type: str = "STICKER"

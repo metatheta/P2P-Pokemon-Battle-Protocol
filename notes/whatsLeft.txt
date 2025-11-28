@@ -1,0 +1,93 @@
+so a lot of what's left is the UI stuff using CLI and the
+assembling of what I made so far into like a main class (maybe we can call it peer)
+
+
+1) we need to be able to store the choice of the user,
+   choice referring to if they wanna host, be a joiner, or be a spectator
+	1.1) we then need to make the appropriate transport object for
+             the host, joiner, and spectator
+	1.2) I imagine that right after the we make the transport object
+             we need to make the users do the handshake request and handshake 
+	     response immediately which in the specs means we enter the initial state
+2) we need to be able to ask the user what pokemon they want,
+   I assume we only need 1 pokemon per user cuz the specs say
+   "When a Pokémon's HP drops to zero or below, the peer whose opponent has
+   fainted sends a GAME_OVER message."
+	2.1) we just ask them the name of the pokemon and retrieve
+             the pokemon data from our pokemon data dictionary
+3) we need to be able to ask the user what moves to give 
+   give the pokemon, exactly 4 moves cuz that's how we do it
+   in the actual game
+	3.1) to do this we ask what category and type the move should
+             be and then we can get that from our dictionary of moves
+4) we can then make a pokemon object using the pokemon data and 
+   the 4 moves
+5) now that we have a pokemon each peer can now send a battle setup message
+   to each other
+	5.1) each peer stores their opponents pokemon locally by using the pokemon
+	     name received to retrieve the appropriate pokemon data
+	5.2) we then enter a what the specs call the turn based state
+6) in this turn based state the host sends an attack announce and the joiner replies with
+   a defense announce 
+	6.1) when we enter the turn based state again in succeeding iterations we have to 
+             implement it in a way that the previous attack becomes the defender and the
+             previous defender become the attacker
+	6.2) when a player in this state sends what they need then they calculate the 
+	     damage inflicted and apply it to the correct pokemon (I made methods to 
+	     calculate the damage as methods of the pokemon)
+	6.3) we then enter what the specs call a turn processing state
+7) in this turn processing state the current attacker just sends the appropriate calculation
+   report on their end to the current defender
+
+	7.1) if the defender sees that the calculation received matches what they calculated
+	       then the defender sends a calculation confirm
+	7.1.1) if the calculations say that the defender's pokemon died then the attacker sends the game over
+	       message and the game stops right there
+	7.1.2) if the calculations say that the defender's pokemon is still alive then both peers go back to the
+	       turn based state in step 6 (applying the switching of attacking and defending roles)
+
+	7.2) if the calculations don't match tho then the defender will send a resolution request
+               to the attacker
+	7.2.1) the attacker after receiving the resolution request needs to recalculate the data
+	7.2.2.1) the attacker will send an ack if the recalculation matches the resolution request
+	7.2.2.1.1) both peers go back to the turn based state in step 6 if the defending pokemon is still alive
+	7.2.2.1.2) if the defending pokemon is supposedly dead then the attacker sends the game over message and
+		   the game ends for everyone
+
+	7.2.2.2) if the recalculation doesn't match the resolution request then no ack is sent back
+		 and the game ends for everyone
+
+ABOUT NOT GAME STUFF:
+- we still have to deal with chat messages 
+- since chat messages can be send at anytime ig that 
+  means they get their own thread or something
+- but they should still be displayed on the same 
+  screen when a chat message is received
+
+ABOUT HOW TO SEND MESSAGES:
+- to make a message you just grab its constructor
+  then plug in the needed parameters then right after the 
+  constructor you call the .toMessageFormat() method and 
+  assign it to a variable
+- you then call the sendToPeer() method of the transport object
+  and pass the variable as a parameter
+- sample code:
+  	message = HandshakeRequest().toMessageFormat()
+  	self.transport.sendToPeer(message)
+
+ABOUT WHEN SENDING MESSAGES:
+- each time you send the messages seen in section 4
+  of the specs, the receiver should send you an Acknowledgement
+- Acknowledgement is special since we need to send these after 
+  all the other messages
+- as a general rule, the receiver can't send what they want to send
+  until they reply to the sender with an Acknowledge message
+- when you as a sender don't receive an Acknowledgement within 
+  500 milliseconds, you can resend your message 2 more times 
+  (so a total of 3 sends)
+- if the resends don't give you an acknowledge the entire program should end
+
+NOTES:
+- I need to remove frozen=True in the pokemon data class
+- I need to give everything a sequence number
+

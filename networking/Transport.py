@@ -72,7 +72,8 @@ class JoinerTransport(Transport):
 
     # a function that makes a temporary socket that we bind
     # to the broadcastIP and agreed upon broadcast port
-    def waitForBroadcast(self):
+    # returns true if we receive a broadcast
+    def waitForBroadcast(self) -> bool:
         broadcastSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         broadcastSocket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         broadcastSocket.bind((Transport.localBindIP, Transport.broadcastPort))
@@ -83,4 +84,4 @@ class JoinerTransport(Transport):
 
             if "BROADCAST" in content:
                 broadcastSocket.close()
-                break
+                return True
