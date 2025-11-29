@@ -29,19 +29,19 @@ class IO:
             pokemon = Data.pokemonDataDictionary.get(pokemonName)
         return pokemonName
 
-    def ask_move(self, whichMoveNumber: int) -> str:
+    def ask_move(self, whichMoveNumber: int, moveDict: dict[Move]) -> str:
         print(f'What do you want move {whichMoveNumber} of your pokemon to be?')
         print('Choose from the list below:')
-        self.print_moves()
+        self.print_moves(moveDict)
         move = None
         while move is None:
             moveName = input('Please enter the name of the move: ').lower()
             move = Data.moveDictionary.get(moveName)
         return moveName
 
-    def print_moves(self):
+    def print_moves(self, moveDict: dict[Move]):
         number = 1
-        for key, move in Data.moveDictionary:
+        for key, move in moveDict.item():
             print(f'{number}] {move.name}')
             number += 1
 
