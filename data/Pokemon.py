@@ -1,9 +1,10 @@
 from Data import Data
+from Templates import Move, PokemonData
 
 class Pokemon:
-    def __init__(self, pokemonData, moves):
+    def __init__(self, pokemonData: PokemonData, moveTuple: tuple[Move]):
         self.pokemonData = pokemonData
-        self.moves = moves
+        self.moveTuple = moveTuple
 
     def defenderCalculation(self, moveName: str, opponentName: str) -> float:
         move = Data.moveDictionary[moveName.lower()]
