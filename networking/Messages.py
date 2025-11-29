@@ -8,7 +8,7 @@ from dataclasses import field
 class Message:
     message_type: str = field(init=False)
 
-    def toMessageFormat(self) -> str:
+    def to_message_format(self) -> str:
         m = asdict(self)
         
         result = ""

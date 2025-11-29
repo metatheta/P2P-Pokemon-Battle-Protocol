@@ -17,7 +17,7 @@ class Transport:
         self.bind()
         self.senderInfo = None
 
-    def makeSocket(self):
+    def make_socket(self):
         return socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     
     def bind(self):
@@ -26,19 +26,19 @@ class Transport:
     # this is a method that should be called when making
     # the message, it updates the sequence number and
     # returns the sequence number to use
-    def updateAndGetSequenceNumber(self):
+    def update_and_get_sequence_number(self):
         Transport.sequenceNumber += 1
         return Transport.sequenceNumber
     
     # this is a method the should be called when comparing
     # the received message's sequence number to our record of sequence number
     # returns sequence number
-    def getSequenceNumber(self):
+    def get_sequence_number(self):
         return Transport.sequenceNumber
     
     # it has a method to send messages, having the
     # string representation of the message as parameter
-    def sendToPeer(self, message: str):
+    def send_to_peer(self, message: str):
         self.yourSocket.sendto(message.encode(), self.senderInfo)
 
     # it can also receive messages and pass the contents
@@ -72,7 +72,7 @@ class JoinerTransport(Transport):
     # a function that makes a temporary socket that we bind
     # to the broadcastIP and agreed upon broadcast port
     # returns true if we receive a broadcast
-    def waitForBroadcast(self) -> bool:
+    def wait_for_broadcast(self) -> bool:
         broadcastSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         broadcastSocket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         broadcastSocket.bind((Transport.localBindIP, Transport.broadcastPort))

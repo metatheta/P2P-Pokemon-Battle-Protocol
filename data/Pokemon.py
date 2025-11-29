@@ -6,7 +6,7 @@ class Pokemon:
         self.pokemonData = pokemonData
         self.moveTuple = moveTuple
 
-    def defenderCalculation(self, moveName: str, opponentName: str) -> float:
+    def defender_calculation(self, moveName: str, opponentName: str) -> float:
         move = Data.moveDictionary[moveName.lower()]
         damage: float = 0.0
         opponentName = opponentName.lower()
@@ -36,7 +36,7 @@ class Pokemon:
 
         return damage
             
-    def attackerCalculation(self, moveName: str, opponentName: str) -> float:
+    def attacker_calculation(self, moveName: str, opponentName: str) -> float:
         move = Data.moveDictionary[moveName.lower()]
         damage: float = 0.0
         opponentName = opponentName.lower()

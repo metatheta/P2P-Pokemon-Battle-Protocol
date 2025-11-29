@@ -50,12 +50,12 @@ class Data:
     # method to get the matchUp multiplicity given the 
     # attacker's type and the defender's type
     @staticmethod
-    def matchUpMultiplier(attackerType: str, defenderType: str):
+    def match_up_multiplier(attackerType: str, defenderType: str):
         defender_matchups = Data.matchUpDictionary[defenderType.lower()]
         return getattr(defender_matchups, attackerType.lower())
     
     # method that reads all the pokemon from the csv file
-    def populatePokemonData(self):
+    def populate_pokemon_data(self):
         with open('pokemon.csv', 'r') as file:
             reader = csv.DictReader(file)
             
@@ -76,7 +76,7 @@ class Data:
     
     # methods that reads the first 18 monotype pokemon
     # from the csv and records the type match up
-    def populateMatchUps(self):
+    def populate_match_ups(self):
         with open('pokemon.csv', 'r') as file:
             reader = csv.DictReader(file)
 

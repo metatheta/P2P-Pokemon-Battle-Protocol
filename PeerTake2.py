@@ -11,3 +11,9 @@ class Peer(self):
     self.pokemon: Pokemon = None
     self.enemyPokemon: PokemonData = None
     self.io: IO = IO()
+
+    def start():
+        roleChoice = self.io.get_role()
+
+        if roleChoice == 1:
+            self.transport = 
