@@ -1,6 +1,6 @@
-from networking.Transport import HostTransport
-from networking.Transport import JoinerTransport
-from networking.Messages import *
+from Transport import HostTransport
+from Transport import JoinerTransport
+from Messages import *
 
 # TODO: I realize how messed up the entire stucture is
 # we probably need 2 threads each witht their own listening loop

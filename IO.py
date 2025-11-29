@@ -1,5 +1,5 @@
-from data.Data import Data
-from data.Templates import Move
+from Data import Data
+from Templates import Move
 
 class IO:
     def get_role(self) -> int:

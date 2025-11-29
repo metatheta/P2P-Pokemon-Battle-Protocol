@@ -1,11 +1,10 @@
-from _typeshed import Self
-from networking.Transport import HostTransport
-from networking.Transport import JoinerTransport
-from networking.Messages import *
-from ui.IO import IO
-from data.Data import Data
-from data.Pokemon import Pokemon
-from data.Templates import PokemonData, Move, TypeMatchUps
+from Transport import HostTransport
+from Transport import JoinerTransport
+from IO import IO
+from Data import Data
+from Pokemon import Pokemon
+from Templates import PokemonData
+
 
 class Peer(self):
     self.transport = None

@@ -1,5 +1,5 @@
 import Peer
-from data.Data import Data
+from Data import Data
 
 if __name__ == '__main__':
     # readying the dictionaries

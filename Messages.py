@@ -10,7 +10,7 @@ class Message:
 
     def to_message_format(self) -> str:
         m = asdict(self)
-        
+
         result = ""
 
         for k, v in m.items():
@@ -18,8 +18,18 @@ class Message:
 
         return result
 
+    @staticmethod
+    def from_message_format(message: str) -> dict:
+        tempDict = {}
+        for line in message.strip().splitlines():
+            if ':' in line:
+                key, value = line.split(':', 1)
+                tempDict[key.strip()] = value.strip()
+        return tempDict
+
 @dataclass
 class Acknowledgement(Message):
+    ack_number: int
     def __post_init__(self):
         self.message_type: str = "ACKNOWLEDGEMENT"
 
@@ -56,7 +66,7 @@ class BattleSetup(MainMessage):
 
     def __post_init__(self):
         self.message_type: str = "BATTLE_SETUP"
-    
+
 @dataclass
 class AttackAnnounce(MainMessage):
     move_name: str
