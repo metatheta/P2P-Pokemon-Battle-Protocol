@@ -50,7 +50,7 @@ class Data:
     # method to get the matchUp multiplicity given the 
     # attacker's type and the defender's type
     @staticmethod
-    def match_up_multiplier(attackerType: str, defenderType: str):
+    def get_match_up_multiplier(attackerType: str, defenderType: str):
         defender_matchups = Data.matchUpDictionary[defenderType.lower()]
         return getattr(defender_matchups, attackerType.lower())
     

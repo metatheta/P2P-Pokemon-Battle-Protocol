@@ -9,15 +9,15 @@ class Pokemon:
     def defender_calculation(self, moveName: str, opponentName: str) -> float:
         move = Data.moveDictionary[moveName.lower()]
         damage: float = 0.0
-        opponentName = opponentName.lower()
+        opponent = Data.pokemonDataDictionary[opponentName.lower()]
 
         # if the move is of the special category
         if move.category == 'Special':
             # calculate the damage using the opponent pokemon's spatt and the spdef of the user's pokemon
             damage = (
                 move.basePower * 
-                Data.pokemonDataDictionary[opponentName].pokemondata.spatt *
-                getattr(Data.matchUpDictionary[self.pokemonData.type1.lower()], move.moveType.lower()) / 
+                opponent.spatt *
+                Data.get_match_up_multiplier(move.moveType.lower(), self.pokemonData.type1.lower()) /
                 self.pokemonData.spdef 
             )
 
@@ -25,8 +25,8 @@ class Pokemon:
             # calculate the damage using the opponent pokemon's attck and the defense of the user's pokemon
             damage = (
                 move.basePower * 
-                Data.pokemonDataDictionary[opponentName].pokemondata.attack *
-                getattr(Data.matchUpDictionary[self.pokemonData.type1.lower()], move.moveType.lower()) / 
+                opponent.attack *
+                Data.get_match_up_multiplier(move.moveType.lower(), self.pokemonData.type1.lower()) /
                 self.pokemonData.defense 
             )
             
@@ -40,6 +40,8 @@ class Pokemon:
         move = Data.moveDictionary[moveName.lower()]
         damage: float = 0.0
         opponentName = opponentName.lower()
+        opponent = Data.pokemonDataDictionary[opponentName.lower()]
+
 
         # if the move is of the special category
         if move.category == 'Special':
@@ -47,8 +49,8 @@ class Pokemon:
             damage = (
                 move.basePower * 
                 self.pokemondata.spatt *
-                getattr(Data.matchUpDictionary[Data.pokemonDictionary[opponentName].pokemonData.type1.lower()], move.moveType.lower()) / 
-                Data.pokemonDataDictionary[opponentName].pokemonData.spdef 
+                Data.get_match_up_multiplier(move.moveType.lower(), opponent.type1.lower()) /
+                opponent.spdef 
             )
 
         else:
@@ -56,12 +58,12 @@ class Pokemon:
             damage = (
                 move.basePower * 
                 self.pokemondata.attack *
-                getattr(Data.matchUpDictionary[Data.pokemonDictionary[opponentName].pokemonData.type1.lower()], move.moveType.lower()) / 
-                Data.pokemonDataDictionary[opponentName].pokemonData.defense 
+                Data.get_match_up_multiplier(move.moveType.lower(), opponent.type1.lower()) /
+                opponent.defense 
             )
             
          # if the opponent's pokemon has a secondary type, multiply it by the corresponding match up multiplier
-        if Data.pokemonDictionary[opponentName].pokemonData.type2:
-            damage *= getattr(Data.matchUpDictionary[Data.pokemonDictionary[opponentName].pokemonData.type2.lower()], move.moveType.lower())
+        if opponent.type2:
+            damage *= getattr(Data.matchUpDictionary[opponent.type2.lower()], move.moveType.lower())
 
         return damage        
