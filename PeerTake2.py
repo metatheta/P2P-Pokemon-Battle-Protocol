@@ -26,16 +26,21 @@ class Peer(self):
         roleChoice = self.io.get_role()
 
         # get the pokemon of the user
-        pokemonName = self.io.ask_pokemon()
-        pokemonData = Data.pokemonDataDictionary[pokemonName.lower()]
+        pokemonName = self.io.ask_pokemon().lower()
+        tempPokemonData = Data.pokemonDataDictionary[pokemonName]
 
-        # make the user give it 4 moves
+        # ask the user for 4 moves
         localMoveDict = Data.moveDictionary
-        tempMoveTuple
+        tempMoveList = []
 
         for i in range(1,5):
-            moveName = self.ui.ask_move(i, localMoveDict)
+            moveName = self.ui.ask_move(i, localMoveDict).lower()
+            tempMoveList.append(Data.moveDictionary[moveName])
+            # remove a move that has already been picked
+            del localMoveDict[moveName]
 
+        # make the user's pokemon using the pokemon data and the moves received
+        self.pokemon = Pokemon(tempPokemonData, tuple(tempMoveList))
 
         match roleChoice:
             case 1:
