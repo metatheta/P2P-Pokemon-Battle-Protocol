@@ -60,7 +60,7 @@ class IO:
             except ValueError:
                 print("Invalid input. Please enter a number (1, 2, 3, or 4).")
                 choice = -1
-        return choice
+        return choice - 1
 
 
 
