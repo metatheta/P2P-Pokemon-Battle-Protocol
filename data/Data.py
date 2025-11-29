@@ -1,7 +1,5 @@
 import csv
-from Templates import PokemonData
-from Templates import TypeMatchUps
-from Templates import Move
+from Templates import PokemonData, TypeMatchUps, Move 
 import random
 
 # a class the Host and Joiner Peers can use

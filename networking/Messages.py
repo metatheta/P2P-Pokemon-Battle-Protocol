@@ -1,14 +1,16 @@
 from dataclasses import dataclass
 from dataclasses import asdict
+from dataclasses import field
 
 # this it the parent class that has the message_type
 # and the toMessageFormat() method
 @dataclass
 class Message:
-    message_type: str
+    message_type: str = field(init=False)
 
     def toMessageFormat(self) -> str:
         m = asdict(self)
+        
         result = ""
 
         for k, v in m.items():
@@ -18,7 +20,8 @@ class Message:
 
 @dataclass
 class Acknowledgement(Message):
-    message_type: str = "ACKNOWLEDGEMENT"
+    def __post_init__(self):
+        self.message_type: str = "ACKNOWLEDGEMENT"
 
 @dataclass
 class MainMessage(Message):
@@ -26,16 +29,18 @@ class MainMessage(Message):
 
 @dataclass
 class HandshakeRequest(MainMessage):
-    message_type: str = "HANDSHAKE_REQUEST"
+    def __post_init__(self):
+        self.message_type: str = "HANDSHAKE_REQUEST"
 
 @dataclass
 class HandshakeResponse(MainMessage):
-    message_type: str = "HANDSHAKE_RESPONSE"
+    def __post_init__(self):
+        self.message_type: str = "HANDSHAKE_RESPONSE"
 
 @dataclass
 class SpectatorRequest(MainMessage):
-    message_type: str = "SPECTATOR_REQUEST"
-
+    def __post_init__(self):
+        self.message_type: str = "SPECTATOR_REQUEST"
 
 @dataclass
 class StatBoost():
@@ -47,17 +52,23 @@ class StatBoost():
 class BattleSetup(MainMessage):
     pokemon_name: str
     stat_boosts: StatBoost
-    message_type: str = "BATTLE_SETUP"
     communication_mode: str = "P2P"
+
+    def __post_init__(self):
+        self.message_type: str = "BATTLE_SETUP"
     
 @dataclass
 class AttackAnnounce(MainMessage):
     move_name: str
-    message_type: str = "ATTACK_ANNOUNCE"
+
+    def __post_init__(self):
+        self.message_type: str = "ATTACK_ANNOUNCE"
 
 @dataclass
 class DefenseAnnounce(MainMessage):
-    message_type: str = "DEFENSE_ANNOUNCE"
+
+    def __post_init__(self):
+        self.message_type: str = "DEFENSE_ANNOUNCE"
 
 @dataclass
 class CalculationReport(MainMessage):
@@ -67,11 +78,15 @@ class CalculationReport(MainMessage):
     damage_dealt: int
     defender_hp_remaining: int
     status_message: str
-    message_type: str = "CALCULATION_REPORT"
+
+    def __post_init__(self):
+        self.message_type: str = "CALCULATION_REPORT"
 
 @dataclass
 class CalculationConfirm(MainMessage):
-    message_type: str = "CALCULATION_CONFIRM"
+
+    def __post_init__(self):
+        self.message_type: str = "CALCULATION_CONFIRM"
 
 @dataclass
 class ResolutionRequest(MainMessage):
@@ -79,25 +94,37 @@ class ResolutionRequest(MainMessage):
     move_used: str
     damage_dealt: int
     defender_hp_remaining: int
-    message_type: str = "RESOLUTION_REQUEST"
+
+    def __post_init__(self):
+        self.message_type: str = "RESOLUTION_REQUEST"
 
 @dataclass
 class GameOver(MainMessage):
     winner: str
     loser: str
-    message_type: str = "GAME_OVER"
+
+    def __post_init__(self):
+        self.message_type: str = "GAME_OVER"
 
 @dataclass
-class TextMessage(MainMessage):
+class ChatMessage(MainMessage):
     sender_name: str
+    content_type: str = field(init=False)
+
+    def __post_init__(self):
+        self.message_type: str = "CHAT_MESSAGE"
+
+@dataclass
+class TextMessage(ChatMessage):
     message_text: str
-    message_type = "CHAT_MESSAGE"
-    content_type = "TEXT"
+
+    def __post_init__(self):
+        self.content_type = "TEXT"
 
 # TODO: CHANGE STICKER DATA TO PROPER TYPE
 @dataclass
-class StickerMessage(MainMessage):
-    sender_name: str
+class StickerMessage(ChatMessage):
     sticker_data: any
-    message_type: str = "CHAT MESSAGE"
-    content_type: str = "STICKER"
+
+    def __post_init__(self):
+        self.content_type: str = "STICKER"

@@ -1,5 +1,4 @@
 import socket
-from Messages import *
 
 # made a class to handle the networking stuff
 class Transport:
