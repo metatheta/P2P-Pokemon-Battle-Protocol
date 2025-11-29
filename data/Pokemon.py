@@ -8,7 +8,7 @@ class Pokemon:
 
     def defender_calculation(self, moveName: str, opponentName: str) -> float:
         move = Data.moveDictionary[moveName.lower()]
-        damage: float = 0.0
+        damage: float = 1.0
         opponent = Data.pokemonDataDictionary[opponentName.lower()]
 
         # if the move is of the special category
@@ -38,7 +38,7 @@ class Pokemon:
             
     def attacker_calculation(self, moveName: str, opponentName: str) -> float:
         move = Data.moveDictionary[moveName.lower()]
-        damage: float = 0.0
+        damage: float = 1.0
         opponentName = opponentName.lower()
         opponent = Data.pokemonDataDictionary[opponentName.lower()]
 

@@ -84,3 +84,25 @@ class JoinerTransport(Transport):
             if "BROADCAST" in content:
                 broadcastSocket.close()
                 return True
+
+class SpectatorTransport(Transport):
+    spectatorIP = Transport.localBindIP
+    spectatorPort = Transport.broadcastPort
+
+    def __init__(self, yourPortNumber):
+        super().__init__(yourPortNumber)
+
+    # Much like the JoinerTransport but it keeps on listening 
+    # to the broadcast socket
+    # Note: I haven't figured out how to close the socket yet
+    def spectate(self) -> bool:
+        spectatorSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        spectatorSocket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        spectatorSocket.bind((self.spectatorIP, self.spectatorPort))
+
+        while True:
+            bits, self.senderInfo = spectatorSocket.recvfrom(Transport.bytesToRead)
+            content = bits.decode()
+
+            if "BROADCAST" in content:
+                return True
