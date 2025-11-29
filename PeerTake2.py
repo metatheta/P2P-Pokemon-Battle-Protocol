@@ -25,6 +25,8 @@ class Peer(self):
         # get the role of the user
         roleChoice = self.io.get_role()
 
+        pokemonName = self.io.ask_pokemon()
+
         match roleChoice:
             case 1:
                 self.transport = HostTransport(8168)
@@ -46,7 +48,7 @@ class Peer(self):
 
             # get the message from receive and store it in out tempDict
             message = self.transport.receive()
-            loopDict = self.turnMessageIntoDict(message)
+            loopDict = self.turn_message_into_dict(message)
 
             # we call different methods depending on the result 
             # of the switch statement
@@ -79,13 +81,11 @@ class Peer(self):
                 # if we receive an attack announce, we send the 
                 # acknowledgement known as the defense announce
                 case 'ATTACK_ANNOUNCE':
-                    self.sendAcknowledgement(loopDict['sequence_number'])
                     self.sendDefenseAnnounce()
 
                 # if we receive a defense announce, we send the 
                 # acknowledgement known as the calculation report
                 case 'DEFENSE_ANNOUNCE':
-                    self.sendAcknowledgement(loopDict['sequence_number'])
                     # function call to send a calculation report
 
                 # if we receive a calculation report, we check
