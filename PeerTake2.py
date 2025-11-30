@@ -1,3 +1,4 @@
+from Messages import CalculationConfirm
 from Messages import StatBoost
 from Messages import Message
 from _typeshed import Self
@@ -16,7 +17,10 @@ class Peer(self):
     self.io: IO = IO()
     self.health: float = None
     self.enemyHealth: float = None
+    self.move: Move = None
+    self.enemyMove: Move = None
     self.damage: float = None
+    self.enemyDamage: float = None
 
 
     def start():
@@ -26,6 +30,7 @@ class Peer(self):
         # get the pokemon of the user
         pokemonName = self.io.ask_pokemon().lower()
         tempPokemonData = Data.pokemonDataDictionary[pokemonName]
+        self.health = tempPokemonData.hp
 
         # ask the user for 4 moves
         localMoveDict = Data.moveDictionary
@@ -70,62 +75,79 @@ class Peer(self):
                 # handshake response
                 case 'HANDSHAKE_REQUEST':
                     self.transport.send_ack()
-                    self.sendHandshakeResponse()
+                    if not self.send_handshake_response():
+                        self.terminate_battle()
 
                 # if we receive a handshake response,
                 # we send a battle setup to the peer
                 case 'HANDSHAKE_RESPONSE':
                     self.transport.send_ack()
-                    self.sendBattleSetup(self.pokemon.pokemonData.name)
+                    if not self.send_battle_setup():
+                        self.terminate_battle()
 
-                # if we receive a battle setup we initialize the value
+                # if we receive a battle setup we initialize the values
                 # for the enemy pokemon, we check if the current peer
                 # uses a HostTransport, if that is true then we make the user
                 # choose a move then sends an attack announce
                 case 'BATTLE_SETUP':
                     self.transport.send_ack()
                     self.enemyPokemon = Data.pokemonDataDictionary[loopDict[pokemon_name]]
+                    self.enemyHealth = self.enemyPokemon.hp
 
                     if isinstance(self.transport, HostTransport):
-                        self.sendBattleSetup(self.pokemon.pokemonData.name)
-                        while True:
-                            try:
-                                tempDict = self.transport.receive()
-                                if tempDict['message_type'] == "ACKNOWLEDGEMENT":
-                                    moveIndex = self.io.choose_attack(self.pokemon.pokemonData.name, self.pokemon.moveTuple)
-                                    self.sendAttackAnnounce(moveIndex)
-                            except Exception as e:
-                                print(f"Exception: {e}")
+                        if not self.send_battle_setup():
+                            self.terminate_battle()
+                        else:
+                            moveIndex = self.io.choose_attack(self.pokemon.pokemonData.name, self.pokemon.moveTuple)
+                            self.move = Data.moveDictionary[self.pokemon.moveTuple[moveIndex].name.lower()]
+                            if not self.send_attack_announce():
+                                self.terminate_battle()
+                           
 
                 # if we receive an attack announce, we send the 
                 # acknowledgement known as the defense announce
                 case 'ATTACK_ANNOUNCE':
                     self.transport.send_ack()
-                    self.sendDefenseAnnounce()
+                    self.enemyMove = Data.moveDictionary[loopDict['move_name'].lower()]
+                    if not self.send_defense_announce():
+                        self.terminate_battle()
 
                 # if we receive a defense announce, we send the 
                 # acknowledgement known as the calculation report
                 case 'DEFENSE_ANNOUNCE':
                     self.transport.send_ack()
-                    # function call to send a calculation report
+                    if not self.send_calculation_report():
+                        self.terminate_battle()
 
                 # if we receive a calculation report, we check
-                # if the report matches our report
+                # if the report matches our report, if it does
+                # we apply the changes to our health, send a 
+                # calculation confirm, and then have the previous 
+                # defender make a move and send an attack announce
+                # if it does not match we send our calculation 
+                # through a resolution request
                 case 'CALCULATION_REPORT':
                     self.transport.send_ack()
-                    if # function call that compares contents of calculation report
-                        # function call to make calculations
-                        # function call to send a calculation confirm
-                        # function call to have the user make a move
-                        # function call to send an attack announce
+                    self.enemyDamage, multiplier = self.pokemon.defender_calculation(self.enemyMove.name, self.enemyPokemon.name)
+                    if self.enemyDamage == float(loopDict['damage_dealth']):
+                        self.apply_own_hp_update()
+                        if not self.send_calculation_confirm():
+                            self.terminate_battle()
+                        else:
+                            moveIndex = self.io.choose_attack(self.pokemon.pokemonData.name, self.pokemon.moveTuple)
+                            self.move = Data.moveDictionary[self.pokemon.moveTuple[moveIndex].name.lower()]
+                            if not self.send_attack_announce():
+                                self.terminate_battle()
 
                     else:
-                        # function call to send resolution request
+                        if not self.send_resolution_request():
+                            self.terminate_battle()
 
                 # since this the end of the 4 way acknowledgement 
-                # we dont have to do anything anymore
+                # we just need to update the enemy hp
                 case 'CALCULATION_CONFIRM':
                     self.transport.send_ack()
+                    self.apply_enemy_hp_update()
                     # print stuff idk
 
                 # if we receive a resolution request, we need to
@@ -144,25 +166,76 @@ class Peer(self):
                         
                         case 'STICKER':
 
-def sendHandshakeResponse(self):
+def terminate_battle(self):
+    print('Connection lost... battle over... shutting down...')
+    self.transport.close()
+
+def send_handshake_response(self) -> bool:
     self.transport.sequenceNumber += 1
     message = HandshakeResponse(sequence_number=self.transport.sequenceNumber).to_message_format()
-    self.transport.send_to_peer(message)
+    return self.transport.send_to_peer(message)
 
-def sendBattleSetup(self, pokemonName: str):
+def send_battle_setup(self) -> bool:
     sb = StatBoost(5,5)
     self.transport.sequenceNumber += 1
     message = BattleSetup(sequence_number=self.transport.sequenceNumber,
-                            pokemon_name=pokemonName, stat_boosts=sb).to_message_format()
-    self.transport.send_to_peer(message)
+                          pokemon_name=self.pokemon.pokemonData.name, 
+                          stat_boosts=sb
+                        ).to_message_format()
+    return self.transport.send_to_peer(message)
 
-def sendAttackAnnounce(self, moveIndex: int):
+def send_attack_announce(self) -> bool:
     self.transport.sequenceNumber += 1
-    message = AttackAnnounce(sequence_number=self.transport.sequenceNumber, move_name=self.pokemon.moveTuple[moveIndex].name)
-    self.transport.send_to_peer(message)
+    message = AttackAnnounce(sequence_number=self.transport.sequenceNumber, move_name=self.move.name).to_message_format()
+    return self.transport.send_to_peer(message)
 
-def sendCalculation(self):
+def send_defense_announce(self) -> bool:
     self.transport.sequenceNumber += 1
+    message = DefenseAnnounce(sequence_number=self.transport.sequenceNumber).to_message_format()
+    return self.transport.send_to_peer(message)
+
+def send_calculation_report(self) -> bool:
+    self.transport.sequenceNumber += 1
+    a = self.pokemon.pokemonData.name
+    b = self.move.name
+    self.damage, multiplier = self.pokemon.attacker_calculation(b, self.enemyPokemon.name)
+    tempEnemyHP = self.enemyHealth - self.damage
+    tempMessage = f'{a} used {b}!'
+    if multiplier >= 2:
+        tempMessage += ' It was super effective!'
+    elif multiplier <= 0.5:
+        tempMessage += ' It was not very effective...'
+
     message = CalculationReport(sequence_number=self.transport.sequenceNumber, 
-                                what here)
-    self.transport.send_to_peer(message)
+                                attacker=a,
+                                move_used=b,
+                                remaining_health=self.pokemon.pokemonData.hp,
+                                damage_dealt=self.damage,
+                                defender_hp_remaining= tempEnemyHP,
+                                status_message=tempMessage
+                                ).to_message_format()
+    return self.transport.send_to_peer(message)
+
+def send_calculation_confirm(self):
+    self.transport.sequenceNumber += 1
+    message = CalculationConfirm(sequence_number=self.transport.sequenceNumber).to_message_format()
+    return self.transport.send_to_peer(message)
+
+def send_resolution_request(self):
+    self.transport.sequenceNumber += 1
+    self.enemyDamage, multiplier = self.pokemon.defender_calculation(self.enemyMove.name, self.enemyPokemon.name)
+    tempHP = self.health - self.enemyDamage
+    message = ResolutionRequest(sequence_number=self.transport.sequenceNumber,
+                                attacker=self.enemyPokemon.name,
+                                move_used=self.enemyMove.name,
+                                damage_dealt=self.enemyDamage,
+                                defender_hp_remaining=tempHP                         
+                               ).to_message_format()
+    return self.transport.send_to_peer(message)
+    
+
+def apply_enemy_hp_update(self):
+    self.enemyHealth -= self.damage
+
+def apply_own_hp_update(self):
+    self.health -= self.enemyDamage
