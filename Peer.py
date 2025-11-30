@@ -23,50 +23,65 @@ class Peer():
         self.enemyDamage: float = None
 
 
-    def start():
-        # get the role of the user
-        roleChoice = self.io.get_role()
+    def start(self):
+        try:
+            # get the role of the user
+            roleChoice = self.io.get_role()
 
-        # get the pokemon of the user
-        pokemonName = self.io.ask_pokemon().lower()
-        tempPokemonData = Data.pokemonDataDictionary[pokemonName]
-        self.health = tempPokemonData.hp
+            # get the pokemon of the user
+            pokemonName = self.io.ask_pokemon().lower()
+            tempPokemonData = Data.pokemonDataDictionary[pokemonName]
+            self.health = tempPokemonData.hp
 
-        # ask the user for 4 moves
-        localMoveDict = Data.moveDictionary
-        tempMoveList = []
+            # ask the user for 4 moves
+            localMoveDict = Data.moveDictionary
+            tempMoveList = []
 
-        for i in range(1,5):
-            moveName = self.ui.ask_move(i, localMoveDict).lower()
-            tempMoveList.append(Data.moveDictionary[moveName])
-            # remove a move that has already been picked
-            del localMoveDict[moveName]
+            for i in range(1,5):
+                moveName = self.io.ask_move(i, localMoveDict).lower()
+                tempMoveList.append(Data.moveDictionary[moveName])
+                # remove a move that has already been picked
+                del localMoveDict[moveName]
 
-        # make the user's pokemon using the pokemon data and the moves received
-        self.pokemon = Pokemon(tempPokemonData, tuple(tempMoveList))
+            print('stopped getting moves')
+            # make the user's pokemon using the pokemon data and the moves received
+            self.pokemon = Pokemon(tempPokemonData, tuple(tempMoveList))
 
-        match roleChoice:
-            case 1:
-                self.transport = HostTransport(8168)
-                self.transport.broadcast()
-                self.main_loop()
-            case 2:
-                self.transport = JoinerTransport(9279)
-                self.transport.wait_for_broadcast()
-                self.main_loop()
-            case _:
-                print('No spectator yet')
+            match roleChoice:
+                case 1:
+                    print('entered case')
+                    self.transport = HostTransport(8168)
+                    print('finished making transport object')
+                    self.transport.broadcast()
+                    print('Finished broadcasting')
+                    self.main_loop()
+                    print('entered main loop')
+                case 2:
+                    print('entered case')
+                    self.transport = JoinerTransport(9279)
+                    print('finished making transport object')
+                    self.transport.wait_for_broadcast()
+                    print('done receving broadcast')
+                    self.main_loop()
+                    print('entered main loop')
+                case _:
+                    print('No spectator yet')
+        except Exception as e:
+                print(f"Exception: {e}")
 
     def main_loop(self):
+        print("--- MAIN LOOP STARTED ---")
         loopDict = {
                         'message_type': 'justToEnterLoop'
                    }
 
+        
         while True:
-
+            print('--- ENTERED WHILE TRUE---')
             # get the message from receive and store it in out tempDict
             loopDict = self.transport.receive()
 
+            print('--- DONE RECEIVING ---')
             # we call different methods depending on the result 
             # of the switch statement
             match loopDict['message_type']:

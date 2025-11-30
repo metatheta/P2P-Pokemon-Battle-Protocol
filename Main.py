@@ -6,7 +6,8 @@ if __name__ == '__main__':
     Data.populate_match_ups()
     Data.populate_pokemon_data()
 
-    Peer().start()
+    p = Peer()
+    p.start()
     print('Thank you for playing')
 """
     menu_text = "[1] Host\n[2] Join\n[3] Spectate\n[4] Exit Program"

@@ -1,3 +1,4 @@
+from Messages import Broadcast
 import socket
 
 from Messages import Message, Acknowledgement
@@ -7,7 +8,7 @@ from Messages import Message, Acknowledgement
 class Transport:
     bytesToRead = 4096
     broadcastIP = "255.255.255.255"
-    broadcastPort = 8618
+    broadcastPort = 7777
     localBindIP = "0.0.0.0"
     MAX_RETRANSMITS = 3
 
@@ -103,13 +104,29 @@ class HostTransport(Transport):
     # method that allows the Host to initiate a game
     # by broadcasting
     def broadcast(self):
-        temp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        temp.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        temp.sendto(
-            "message_type: BROADCAST".encode(),
-            (Transport.broadcastIP, Transport.broadcastPort),
-        )
-        temp.close()
+        while True:
+            try:
+                # make a temp socket that will be used for sending the broadcast
+                # not the objects actual main socket
+                temp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                # modify it so it can broadcast
+                temp.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+                broadcastAddress = (Transport.broadcastIP, Transport.broadcastPort)
+                message = Broadcast(host_port=self.yourPortNumber).to_message_format()
+                # send the broadcast to the broadcastIP and broadcast port
+                temp.sendto(message.encode(), broadcastAddress)
+                # receives the message from our Joiner
+                bits, self.senderInfo = self.yourSocket.recvfrom(Transport.bytesToRead)
+                content = bits.decode()
+                tempDict = Message.from_message_format(content)
+                
+
+                if 'ACKNOWLEDGEMENT' == tempDict.get('message_type'):
+                    temp.close()
+                    return True
+            except Exception as e:
+                print(f'ERROR ERROR ERRROR: {e}')
+        
 
 
 class JoinerTransport(Transport):
@@ -120,15 +137,26 @@ class JoinerTransport(Transport):
     # to the broadcastIP and agreed upon broadcast port
     # returns true if we receive a broadcast
     def wait_for_broadcast(self) -> bool:
+        # make a temp socket that will be used for listening to the broadcast
         broadcastSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        broadcastSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         broadcastSocket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         broadcastSocket.bind((Transport.localBindIP, Transport.broadcastPort))
 
         while True:
-            bits, self.senderInfo = broadcastSocket.recvfrom(Transport.bytesToRead)
+            print('Im waiting')
+            # receives the message and the main IP the host
+            bits, host_temp_addr = broadcastSocket.recvfrom(Transport.bytesToRead)
             content = bits.decode()
+            tempDict = Message.from_message_format(content)
+            # get the host's Port number from the message and give the correct values to 
+            # senderInfo
+            self.senderInfo = (host_temp_addr[0], int(tempDict.get('host_port')))
 
-            if "BROADCAST" in content:
+            if "BROADCAST" == tempDict.get('message_type'):
+                ack = Acknowledgement(ack_number=self.sequenceNumber)
+                # send the ack to the host's main IP and Port number
+                self.yourSocket.sendto(ack.to_message_format().encode(), self.senderInfo)
                 broadcastSocket.close()
                 return True
 

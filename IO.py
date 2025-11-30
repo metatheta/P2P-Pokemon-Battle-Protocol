@@ -41,7 +41,7 @@ class IO:
 
     def print_moves(self, moveDict: dict[Move]):
         number = 1
-        for key, move in moveDict.item():
+        for key, move in moveDict.items():
             print(f'{number}] {move.name}')
             number += 1
 

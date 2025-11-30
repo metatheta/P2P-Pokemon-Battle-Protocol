@@ -28,6 +28,13 @@ class Message:
         return tempDict
 
 @dataclass
+class Broadcast(Message):
+    host_port: int
+
+    def __post_init__(self):
+        self.message_type: str = "BROADCAST"
+
+@dataclass
 class Acknowledgement(Message):
     ack_number: int
     def __post_init__(self):
