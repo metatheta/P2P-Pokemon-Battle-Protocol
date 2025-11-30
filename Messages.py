@@ -125,6 +125,11 @@ class ChatMessage(MainMessage):
         self.message_type: str = "CHAT_MESSAGE"
 
 @dataclass
+class Continue(MainMessage):
+    def __post_init__(self):
+        self.message_type: str = "CONTINUE"
+
+@dataclass
 class TextMessage(ChatMessage):
     message_text: str
 
