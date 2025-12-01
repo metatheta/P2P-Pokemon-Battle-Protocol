@@ -3,10 +3,6 @@ import socket
 from Messages import Message, Acknowledgement
 
 
-# Note: AI was used to create debug scripts and identify a problem regarding
-# connection messages dropped during the host broadcast period. AI also helped 
-# with the implementation of the retransmission logic.
-
 class LogicalConnection:
     read_length = 4096
     BROADCAST_IP = "255.255.255.255"
@@ -19,7 +15,8 @@ class LogicalConnection:
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind((LogicalConnection.LOCAL_BIND_IP, self.port_number))
         self.retransmission_counter = 0
-        self.sequence_number = 0
+        self.send_sequence_number = 0
+        self.receive_sequence_number = 0
 
     def __send__(self, message: str, addr: tuple[str, int]) -> bool:
         # Try to extract sequence number from message to know what ACK to expect
@@ -28,49 +25,50 @@ class LogicalConnection:
             expected_ack = int(msg_fields.get("sequence_number"))
         except (ValueError, TypeError):
             # Fallback for messages without sequence number (if any)
-            expected_ack = self.sequence_number
+            expected_ack = self.send_sequence_number
 
         self.socket.settimeout(0.5)
         while True:
             try:
-                print(f"Attempt to send to {addr}")
+                # print(f"Attempt to send to {addr}")
                 self.socket.sendto(message.encode(), addr)
-                
+
                 # Wait for ACK
                 while True:
                     try:
-                        data, response_addr = self.socket.recvfrom(LogicalConnection.read_length)
+                        data, response_addr = self.socket.recvfrom(
+                            LogicalConnection.read_length
+                        )
                         response_str = data.decode()
                         response_fields = Message.from_message_format(response_str)
 
                         if (
-                                response_fields.get("message_type") == "ACKNOWLEDGEMENT"
-                                and int(response_fields.get("ack_number")) == expected_ack
+                            response_fields.get("message_type") == "ACKNOWLEDGEMENT"
+                            and int(response_fields.get("ack_number")) == expected_ack
                         ):
                             # Only increment internal counter if we were using it
-                            if expected_ack == self.sequence_number:
-                                self.sequence_number += 1
-                                
+                            if expected_ack == self.send_sequence_number:
+                                self.send_sequence_number += 1
+
                             self.socket.settimeout(None)
                             self.retransmission_counter = 0
-                            print("Message successfully sent")
+                            # print("Message successfully sent")
                             return True
                     except socket.timeout:
-                        raise # Re-raise to trigger retransmission logic
+                        raise  # Re-raise to trigger retransmission logic
                     except Exception:
                         # Ignore malformed packets or other errors while waiting for ACK
                         continue
 
             except socket.timeout:
                 if self.retransmission_counter < self.MAX_RETRANSMITS:
-                    print("Timed out, resending")
+                    # print("Timed out, resending")
                     self.retransmission_counter += 1
                 else:
                     self.socket.settimeout(None)
                     self.retransmission_counter = 0
                     return False
-            except Exception as e:
-                print(f"Exception: {e}")
+            except Exception:
                 self.socket.settimeout(None)
                 return False
 
@@ -84,19 +82,23 @@ class LogicalConnection:
                 if received.get("message_type") == "ACKNOWLEDGEMENT":
                     continue
 
-                if int(received.get("sequence_number")) == self.sequence_number:
-                    self.send_ack(addr, self.sequence_number)
-                    self.sequence_number += 1
-                    print("Matching ACK received")
+                if int(received.get("sequence_number")) == self.receive_sequence_number:
+                    self.send_ack(addr, self.receive_sequence_number)
+                    self.receive_sequence_number += 1
+                    # print("Matching ACK received")
                     return received
-                elif int(received.get("sequence_number")) < self.sequence_number:
+                elif (
+                    int(received.get("sequence_number")) < self.receive_sequence_number
+                ):
                     # Duplicate packet, resend ACK
-                    print(f"Duplicate packet {received.get('sequence_number')} received, resending ACK")
+                    print(
+                        f"Duplicate packet {received.get('sequence_number')} received, resending ACK"
+                    )
                     self.send_ack(addr, int(received.get("sequence_number")))
                     continue
 
-            except Exception as e:
-                print(f"Exception: {e}")
+            except Exception:
+                pass
 
     def send_ack(self, addr, ack_num):
         ack = Acknowledgement(ack_num)
@@ -105,11 +107,38 @@ class LogicalConnection:
     def close(self):
         self.socket.close()
 
+
 class HostConnection(LogicalConnection):
     def __init__(self, port_number):
         super().__init__(port_number)
         self.connected_peers: dict[tuple[str, int], int] = {}
         self.message_buffer: list[tuple[dict, tuple[str, int]]] = []
+        self.send_sequence_numbers: dict[
+            tuple[str, int], int
+        ] = {}  # Track send seq nums per peer
+
+    def send(self, message: str, addr: tuple[str, int]) -> bool:
+        """Send a message to a specific peer with proper sequence number tracking."""
+        # Initialize sequence number for this peer if not exists
+        if addr not in self.send_sequence_numbers:
+            self.send_sequence_numbers[addr] = 0
+
+        # Parse message and inject/update sequence number
+        msg_fields = Message.from_message_format(message)
+        msg_fields["sequence_number"] = str(self.send_sequence_numbers[addr])
+
+        # Rebuild message
+        rebuilt_msg = ""
+        for k, v in msg_fields.items():
+            rebuilt_msg += f"{k}: {v}\n"
+
+        # Send using parent's __send__ which handles retransmission
+        success = super().__send__(rebuilt_msg, addr)
+
+        if success:
+            self.send_sequence_numbers[addr] += 1
+
+        return success
 
     def discovery_broadcast(self):
         temp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -140,16 +169,22 @@ class HostConnection(LogicalConnection):
                         incoming_seq = int(received.get("sequence_number"))
                         if incoming_seq == expected_seq:
                             self.send_ack(addr, ack_num=incoming_seq)
-                            print(f"ACKed and buffering message during discovery: {received.get('message_type')}")
+                            print(
+                                f"ACKed and buffering message during discovery: {received.get('message_type')}"
+                            )
                             self.message_buffer.append((received, addr))
                             # Don't increment sequence number yet - that happens in receive()
                         elif incoming_seq < expected_seq:
                             # Duplicate, just ACK it
                             self.send_ack(addr, ack_num=incoming_seq)
-                            print(f"ACKed duplicate during discovery: seq {incoming_seq}")
+                            print(
+                                f"ACKed duplicate during discovery: seq {incoming_seq}"
+                            )
                     else:
                         # Message from unknown peer, buffer it anyway
-                        print(f"Buffering message from unknown peer during discovery: {received.get('message_type')}")
+                        print(
+                            f"Buffering message from unknown peer during discovery: {received.get('message_type')}"
+                        )
                         self.message_buffer.append((received, addr))
             except socket.timeout:
                 break
@@ -162,24 +197,26 @@ class HostConnection(LogicalConnection):
         if self.message_buffer:
             buffered_msg, buffered_addr = self.message_buffer.pop(0)
             print(f"Returning buffered message from {buffered_addr}")
-            
+
             # Process the buffered message same as a fresh one
             if buffered_addr not in self.connected_peers:
                 # Skip messages from unknown peers
                 return self.receive()  # Recursively check next buffered or socket
-                
+
             expected = self.connected_peers[buffered_addr]
             incoming = int(buffered_msg.get("sequence_number"))
-            
+
             if incoming == expected:
                 # Already ACKed during discovery, just increment and return
                 self.connected_peers[buffered_addr] += 1
                 return buffered_msg
             elif incoming < expected:
                 # Duplicate packet (already processed)
-                print(f"Skipping duplicate buffered packet {incoming} from {buffered_addr}")
+                print(
+                    f"Skipping duplicate buffered packet {incoming} from {buffered_addr}"
+                )
                 return self.receive()  # Recursively check next
-        
+
         while True:
             try:
                 data, addr = self.socket.recvfrom(LogicalConnection.read_length)
@@ -201,12 +238,15 @@ class HostConnection(LogicalConnection):
                     return received
                 elif incoming < expected:
                     # Duplicate packet, resend ACK
-                    print(f"Duplicate packet {incoming} received from {addr}, resending ACK")
+                    print(
+                        f"Duplicate packet {incoming} received from {addr}, resending ACK"
+                    )
                     self.send_ack(addr, ack_num=incoming)
                     continue
 
-            except Exception as e:
-                print(f"Exception: {e}")
+            except Exception:
+                pass
+
 
 class PeerConnection(LogicalConnection):
     def __init__(self, port_number):
@@ -239,5 +279,9 @@ class PeerConnection(LogicalConnection):
     def send(self, message: str):
         return super().__send__(message, self.host_addr)
 
-    def send_ack(self, ack_num: int):
+    def send_ack(self, addr_or_ack_num, ack_num=None):
+        if ack_num is None:
+            ack_num = addr_or_ack_num
         super().send_ack(self.host_addr, ack_num)
+
+# TODO add verbose mode flag to make most of this logging optional

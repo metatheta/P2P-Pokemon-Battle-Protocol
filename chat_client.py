@@ -3,7 +3,7 @@ import random
 import sys
 
 from Connections import PeerConnection
-from Messages import ChatMessage, TextMessage
+from Messages import TextMessage
 
 def prompt_msg_type() -> str:
     while True:
@@ -37,7 +37,6 @@ def send_text():
 
 def send_sticker():
     pass
-
 
 if __name__ == "__main__":
     port = random.randint(8000, 9000)
