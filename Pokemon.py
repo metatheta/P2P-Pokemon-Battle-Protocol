@@ -5,6 +5,20 @@ class Pokemon:
     def __init__(self, pokemonData: PokemonData, moveTuple: tuple[Move]):
         self.pokemonData = pokemonData
         self.moveTuple = moveTuple
+        self.health = self.pokemonData.hp
+
+    @staticmethod
+    def make_move_tuple(answer: str):
+        parts = answer.split(',')
+
+        moveTupleChoices = tuple(Data.moveDictionary.values())
+        moveTupleResult = []
+        for number in parts:
+            intVersion = int(number)
+            intVersion -= 1
+            moveTupleResult.append(moveTupleChoices[intVersion])
+
+        return moveTupleResult
 
     def defender_calculation(self, moveName: str, opponentName: str) -> float:
         move = Data.moveDictionary[moveName.lower()]
@@ -53,7 +67,7 @@ class Pokemon:
             # calculate the damage using the opponent pokemon's spdef and the spatt of the user's pokemon
             damage = (
                 move.basePower * 
-                self.pokemondata.spatt *
+                self.pokemonData.spatt *
                 Data.get_match_up_multiplier(move.moveType.lower(), opponent.type1.lower()) /
                 opponent.spdef 
             )
@@ -62,7 +76,7 @@ class Pokemon:
             # calculate the damage using the opponent pokemon's defense and the attack of the user's pokemon
             damage = (
                 move.basePower * 
-                self.pokemondata.attack *
+                self.pokemonData.attack *
                 Data.get_match_up_multiplier(move.moveType.lower(), opponent.type1.lower()) /
                 opponent.defense 
             )
