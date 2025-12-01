@@ -1,14 +1,12 @@
 from Messages import DiscoveryBroadcast
 import socket
-
 from Messages import Message, Acknowledgement
 
 
-# Pseudo-connection through UDP
-# Wrapper around the raw UDP socket to provide high-level
-# read and send methods that have built-in reliability features
-# It no longer stores an address of its peers directly
-# so that the functionality can be unique per subclass
+# Note: AI was used to create debug scripts and identify a problem regarding
+# connections dropped during the host broadcast period. AI also helped with
+# the implementation of the retransmission logic.
+
 class LogicalConnection:
     read_length = 4096
     BROADCAST_IP = "255.255.255.255"
@@ -21,36 +19,59 @@ class LogicalConnection:
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind((LogicalConnection.LOCAL_BIND_IP, self.port_number))
         self.retransmission_counter = 0
-        self.sequenceNumber = 0
+        self.sequence_number = 0
 
     def __send__(self, message: str, addr: tuple[str, int]) -> bool:
-        self.socket.settimeout(0.5)  # Wait 500 ms for the ACK
+        # Try to extract sequence number from message to know what ACK to expect
+        try:
+            msg_fields = Message.from_message_format(message)
+            expected_ack = int(msg_fields.get("sequence_number"))
+        except (ValueError, TypeError):
+            # Fallback for messages without sequence number (if any)
+            expected_ack = self.sequence_number
+
+        self.socket.settimeout(0.5)
         while True:
             try:
                 print(f"Attempt to send to {addr}")
                 self.socket.sendto(message.encode(), addr)
-                data, addr = self.socket.recvfrom(LogicalConnection.read_length)
-                response_str = data.decode()
-                response_fields = Message.from_message_format(response_str)
+                
+                # Wait for ACK
+                while True:
+                    try:
+                        data, response_addr = self.socket.recvfrom(LogicalConnection.read_length)
+                        response_str = data.decode()
+                        response_fields = Message.from_message_format(response_str)
 
-                if (
-                    response_fields.get("message_type") == "ACKNOWLEDGEMENT"
-                    and int(response_fields.get("ack_number")) == self.sequenceNumber
-                ):
-                    # ACK matches the sent message num = the message was successfully sent
-                    self.sequenceNumber += 1
-                    self.socket.settimeout(None)
-                    self.retransmission_counter = 0
-                    print("Message successfully sent")
-                    return True
+                        if (
+                                response_fields.get("message_type") == "ACKNOWLEDGEMENT"
+                                and int(response_fields.get("ack_number")) == expected_ack
+                        ):
+                            # Only increment internal counter if we were using it
+                            if expected_ack == self.sequence_number:
+                                self.sequence_number += 1
+                                
+                            self.socket.settimeout(None)
+                            self.retransmission_counter = 0
+                            print("Message successfully sent")
+                            return True
+                    except socket.timeout:
+                        raise # Re-raise to trigger retransmission logic
+                    except Exception:
+                        # Ignore malformed packets or other errors while waiting for ACK
+                        continue
+
             except socket.timeout:
                 if self.retransmission_counter < self.MAX_RETRANSMITS:
                     print("Timed out, resending")
                     self.retransmission_counter += 1
                 else:
+                    self.socket.settimeout(None)
+                    self.retransmission_counter = 0
                     return False
             except Exception as e:
                 print(f"Exception: {e}")
+                self.socket.settimeout(None)
                 return False
 
     def receive(self) -> dict | None:
@@ -61,36 +82,38 @@ class LogicalConnection:
                 received = Message.from_message_format(received_str)
 
                 if received.get("message_type") == "ACKNOWLEDGEMENT":
-                    continue  # Skip ACKs
+                    continue
 
-                if int(received.get("sequence_number")) == self.sequenceNumber:
-                    self.send_ack(addr)
-                    self.sequenceNumber += 1
+                if int(received.get("sequence_number")) == self.sequence_number:
+                    self.send_ack(addr, self.sequence_number)
+                    self.sequence_number += 1
                     print("Matching ACK received")
                     return received
+                elif int(received.get("sequence_number")) < self.sequence_number:
+                    # Duplicate packet, resend ACK
+                    print(f"Duplicate packet {received.get('sequence_number')} received, resending ACK")
+                    self.send_ack(addr, int(received.get("sequence_number")))
+                    continue
 
             except Exception as e:
                 print(f"Exception: {e}")
 
-    def send_ack(self, addr: tuple[str, int]):
-        ack = Acknowledgement(self.sequenceNumber)
+    def send_ack(self, addr, ack_num):
+        ack = Acknowledgement(ack_num)
         self.socket.sendto(ack.to_message_format().encode(), addr)
 
     def close(self):
         self.socket.close()
 
-
 class HostConnection(LogicalConnection):
     def __init__(self, port_number):
         super().__init__(port_number)
-        self.connected_peers = []
-        # The host will act as the central server, storing connections to all the peers in a list
-        # Joiners/Spectators never interact directly with each other and use the host as a proxy
+        self.connected_peers: dict[tuple[str, int], int] = {}
+        self.message_buffer: list[tuple[dict, tuple[str, int]]] = []
 
     def discovery_broadcast(self):
         temp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         temp.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        # make temp broadcasting socket
 
         broadcast_addr = (
             LogicalConnection.BROADCAST_IP,
@@ -99,35 +122,98 @@ class HostConnection(LogicalConnection):
         message = DiscoveryBroadcast(self.port_number).to_message_format()
         temp.sendto(message.encode(), broadcast_addr)
         print(f"Broadcasted using temp socket {temp.getsockname()}")
-        # broadcast main socket details
 
-        self.socket.settimeout(5)  # Wait 5 seconds for all joiners to connect
+        self.socket.settimeout(5)
         while True:
             try:
                 data, addr = self.socket.recvfrom(LogicalConnection.read_length)
-                # Receive connections from the main socket
+                received_str = data.decode()
+                received = Message.from_message_format(received_str)
 
-                if addr not in self.connected_peers:
-                    self.connected_peers.append(addr)
-                # The actual content of the messages they send doesn't seem to be relevant
-                # however we can add it later if the acknowledgement needs to be used in some way
+                if received.get("message_type") == "ACKNOWLEDGEMENT":
+                    self.connected_peers.setdefault(addr, 0)
+                else:
+                    # Non-ACK message arrived during discovery
+                    # Send ACK immediately so sender doesn't timeout
+                    if addr in self.connected_peers:
+                        expected_seq = self.connected_peers[addr]
+                        incoming_seq = int(received.get("sequence_number"))
+                        if incoming_seq == expected_seq:
+                            self.send_ack(addr, ack_num=incoming_seq)
+                            print(f"ACKed and buffering message during discovery: {received.get('message_type')}")
+                            self.message_buffer.append((received, addr))
+                            # Don't increment sequence number yet - that happens in receive()
+                        elif incoming_seq < expected_seq:
+                            # Duplicate, just ACK it
+                            self.send_ack(addr, ack_num=incoming_seq)
+                            print(f"ACKed duplicate during discovery: seq {incoming_seq}")
+                    else:
+                        # Message from unknown peer, buffer it anyway
+                        print(f"Buffering message from unknown peer during discovery: {received.get('message_type')}")
+                        self.message_buffer.append((received, addr))
             except socket.timeout:
-                # So the socket times out if recv doesn't complete in 5 seconds
                 break
 
+        self.socket.settimeout(None)
         temp.close()
 
-# I have no idea what to name it cause "joiner" should refer specifically to
-# the other battler and not also spectators, so imma call this a Peer connection
-# It's basically any connection that's not the host, having the choice to become
-# a spectator or joiner
+    def receive(self) -> dict | None:
+        # First, check if there are buffered messages from discovery
+        if self.message_buffer:
+            buffered_msg, buffered_addr = self.message_buffer.pop(0)
+            print(f"Returning buffered message from {buffered_addr}")
+            
+            # Process the buffered message same as a fresh one
+            if buffered_addr not in self.connected_peers:
+                # Skip messages from unknown peers
+                return self.receive()  # Recursively check next buffered or socket
+                
+            expected = self.connected_peers[buffered_addr]
+            incoming = int(buffered_msg.get("sequence_number"))
+            
+            if incoming == expected:
+                # Already ACKed during discovery, just increment and return
+                self.connected_peers[buffered_addr] += 1
+                return buffered_msg
+            elif incoming < expected:
+                # Duplicate packet (already processed)
+                print(f"Skipping duplicate buffered packet {incoming} from {buffered_addr}")
+                return self.receive()  # Recursively check next
+        
+        while True:
+            try:
+                data, addr = self.socket.recvfrom(LogicalConnection.read_length)
+                received_str = data.decode()
+                received = Message.from_message_format(received_str)
+
+                if received.get("message_type") == "ACKNOWLEDGEMENT":
+                    continue
+
+                if addr not in self.connected_peers:
+                    continue
+
+                expected = self.connected_peers[addr]
+                incoming = int(received.get("sequence_number"))
+
+                if incoming == expected:
+                    self.send_ack(addr, ack_num=incoming)
+                    self.connected_peers[addr] += 1
+                    return received
+                elif incoming < expected:
+                    # Duplicate packet, resend ACK
+                    print(f"Duplicate packet {incoming} received from {addr}, resending ACK")
+                    self.send_ack(addr, ack_num=incoming)
+                    continue
+
+            except Exception as e:
+                print(f"Exception: {e}")
+
 class PeerConnection(LogicalConnection):
     def __init__(self, port_number):
         super().__init__(port_number)
         self.host_addr = None
 
     def wait_for_broadcast(self) -> bool:
-        # make a temp socket that will be used for listening to the broadcast
         broadcast_receiver = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         broadcast_receiver.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         broadcast_receiver.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
@@ -145,15 +231,13 @@ class PeerConnection(LogicalConnection):
             self.host_addr = (host_temp_addr[0], int(tempDict.get("host_port")))
 
             if "BROADCAST" == tempDict.get("message_type"):
-                self.send_ack()
+                self.send_ack(0)
                 print(f"Sent ACK to {self.host_addr}")
                 broadcast_receiver.close()
                 return True
 
     def send(self, message: str):
-        super().__send__(message, self.host_addr)
+        return super().__send__(message, self.host_addr)
 
-    def send_ack(self):
-        super().send_ack(self.host_addr)
-
-    # Now the joiner peer only sends to the host it has recognized
+    def send_ack(self, ack_num: int):
+        super().send_ack(self.host_addr, ack_num)
