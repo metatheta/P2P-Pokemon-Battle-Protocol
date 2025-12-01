@@ -1,111 +1,140 @@
+import curses
+import threading
 import random
 import sys
-import threading
 import textwrap
-from collections import deque
-
-try:
-    import msvcrt
-except ImportError:
-    msvcrt = None
-
 from Connections import PeerConnection
 from Messages import TextMessage
 
-CHAT_HEIGHT = 20
-CHAT_WIDTH = 60
-msg_queue = deque(maxlen=CHAT_HEIGHT)
-input_buf = ""
+# AI used for terminal UI.
+# External library used: windows-curses for terminal UI
 
-# AI was utilized only for the terminal UI.
 
-def receiver():
+raw_messages = []
+display_lines = []
+lock = threading.Lock()
+
+
+def receiver(joiner, name, stdscr):
+    """Background thread to receive messages."""
     while True:
         try:
-            joiner.socket.settimeout(1.0)
+            joiner.socket.settimeout(0.5)
             r = joiner.receive()
             if r:
                 if r.get("sender_name") == name:
                     continue
-                msg_queue.append(TextMessage.format(r))
-                redraw()
-        except:
+
+                msg_text = f"[{r.get('sender_name')}]: {r.get('message_text')}"
+
+                # Get current width to wrap immediately
+                max_y, max_x = stdscr.getmaxyx()
+                chat_width = max_x - 4
+
+                with lock:
+                    raw_messages.append(msg_text)
+                    # Wrap only the NEW message and add to display buffer
+                    wrapped = textwrap.wrap(msg_text, width=chat_width)
+                    display_lines.extend(wrapped)
+        except Exception:
             continue
 
 
-def redraw():
-    sys.stdout.write("\x1b[2J\x1b[H")
-
-    lines = []
-    # Create a snapshot to avoid runtime errors if modified by other thread
-    current_msgs = list(msg_queue)
-
-    for m in current_msgs:
-        # Wrap text to fit inside the box (width - 2 for borders)
-        wrapped = textwrap.wrap(m, width=CHAT_WIDTH - 2)
-        if not wrapped:
-            lines.append("")
-        else:
-            lines.extend(wrapped)
-
-    # Keep only the last CHAT_HEIGHT lines
-    display_lines = lines[-CHAT_HEIGHT:]
-
-    # Pad with empty lines at the top if needed
-    while len(display_lines) < CHAT_HEIGHT:
-        display_lines.insert(0, "")
-
-    # Draw the box
-    print("+" + "-" * (CHAT_WIDTH - 2) + "+")
-    for line in display_lines:
-        print(f"|{line.ljust(CHAT_WIDTH - 2)}|")
-    print("+" + "-" * (CHAT_WIDTH - 2) + "+")
-
-    print("> " + input_buf, end="", flush=True)
+def rewrap_all_messages(width):
+    """Helper to recalculate all lines only when window resizes."""
+    global display_lines
+    new_lines = []
+    for msg in raw_messages:
+        new_lines.extend(textwrap.wrap(msg, width=width))
+    display_lines = new_lines
 
 
-def input_loop():
-    global input_buf
+def draw_ui(stdscr, joiner, name):
+    curses.start_color()
+    curses.use_default_colors()
+    curses.curs_set(1)  
+    stdscr.timeout(50)  
+
     input_buf = ""
-    while True:
-        if msvcrt:
-            ch_byte = msvcrt.getch()
-            if ch_byte == b"\r":
-                ch = "\n"
-            elif ch_byte == b"\x08":
-                ch = "\x7f"
-            elif ch_byte == b"\x03":  # Ctrl+C
-                sys.exit()
-            else:
-                try:
-                    ch = ch_byte.decode("utf-8")
-                except:
-                    continue
-        else:
-            ch = sys.stdin.read(1)
+    last_h, last_w = stdscr.getmaxyx()
 
-        if ch == "\n":
+    while True:
+        height, width = stdscr.getmaxyx()
+
+        # Detect Resize to fix layout
+        if (height, width) != (last_h, last_w):
+            with lock:
+                rewrap_all_messages(width - 4)
+            last_h, last_w = height, width
+
+        stdscr.erase()
+        stdscr.border()
+
+
+        title = f" Chat Client: {name} (Address: {joiner.socket.getsockname()}) "
+        stdscr.addstr(0, 2, title[: width - 2])
+
+        chat_height = height - 4
+
+        with lock:
+            visible_lines = display_lines[-chat_height:]
+
+        for i, line in enumerate(visible_lines):
+            try:
+                stdscr.addstr(i + 1, 2, line)
+            except curses.error:
+                pass  # Ignore edge case errors
+
+        stdscr.addstr(height - 2, 2, "> " + input_buf)
+        stdscr.refresh()
+
+        try:
+            ch = stdscr.getch()
+        except KeyboardInterrupt:
+            break
+
+        if ch == -1:
+            continue
+
+        elif ch in (curses.KEY_ENTER, 10, 13):
             if input_buf.strip():
                 m = TextMessage(joiner.send_sequence_number, name, input_buf.strip())
                 joiner.send(m.to_message_format())
-                msg_queue.append(f"[{name}]: {input_buf.strip()}")
-            input_buf = ""
-            redraw()
-        elif ch == "\x7f":
+
+                local_msg = f"[{name}]: {input_buf.strip()}"
+                with lock:
+                    raw_messages.append(local_msg)
+                    # Wrap immediate
+                    display_lines.extend(textwrap.wrap(local_msg, width=width - 4))
+
+                input_buf = ""
+
+        elif ch in (curses.KEY_BACKSPACE, 127, 8):
             input_buf = input_buf[:-1]
-            redraw()
-        else:
-            if ch.isprintable():
-                input_buf += ch
-                redraw()
+        elif 32 <= ch <= 126:
+            if len(input_buf) < width - 5:
+                input_buf += chr(ch)
 
 
 if __name__ == "__main__":
-    port = random.randint(8000, 9000)
-    joiner = PeerConnection(port)
-    name = input("Enter your name: ")
-    if joiner.wait_for_broadcast():
-        t = threading.Thread(target=receiver, daemon=True)
-        t.start()
-        redraw()
-        input_loop()
+    try:
+        port = random.randint(8000, 9000)
+        joiner = PeerConnection(port)
+        print("Searching for host...")
+        if joiner.wait_for_broadcast():
+            user_name = input("Enter your name: ")
+
+            t = threading.Thread(target=lambda: None)  # Placeholder
+
+            def main(stdscr):
+                t = threading.Thread(
+                    target=receiver, args=(joiner, user_name, stdscr), daemon=True
+                )
+                t.start()
+                draw_ui(stdscr, joiner, user_name)
+
+            curses.wrapper(main)
+        else:
+            print("No host found.")
+    except KeyboardInterrupt:
+        sys.exit()
