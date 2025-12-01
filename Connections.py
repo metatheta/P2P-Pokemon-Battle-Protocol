@@ -16,7 +16,7 @@ class LogicalConnection:
     LOCAL_BIND_IP = "0.0.0.0"
     MAX_RETRANSMITS = 3
 
-    def __init__(self, port_number, verbose_flag):
+    def __init__(self, port_number, verbose_flag=False):
         self.port_number = port_number
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind((LogicalConnection.LOCAL_BIND_IP, self.port_number))
@@ -43,6 +43,7 @@ class LogicalConnection:
                     self.socket.settimeout(None)
                     self.retransmission_counter = 0
                     self.log("Message successfully sent")
+                    self.delimited_message(response_str)
                     return True
             except socket.timeout:
                 if self.retransmission_counter < self.MAX_RETRANSMITS:
@@ -81,9 +82,26 @@ class LogicalConnection:
     def close(self):
         self.socket.close()
 
+    ## Logs any error handling or reliability messages
     def log(self, message: str):
         if self.verbose_flag:
             print(message)
+
+    def delimited_message(self, message: str):
+        if self.verbose_flag:
+            print("Message sent: ")
+            lines = message.strip().splitlines()
+            result = "{\n"
+
+            for i, line in enumerate(lines):
+                result += "\t" + line
+                if i != len(lines) - 1:
+                    result += ','
+                result += '\n'
+            result += "}"
+
+            print(result)
+
 
 
 class HostConnection(LogicalConnection):
