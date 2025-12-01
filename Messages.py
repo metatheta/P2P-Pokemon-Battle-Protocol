@@ -126,7 +126,6 @@ class GameOver(MainMessage):
 @dataclass
 class ChatMessage(MainMessage):
     sender_name: str
-    content_type: str = field(init=False)
 
     def __post_init__(self):
         self.message_type: str = "CHAT_MESSAGE"
@@ -142,6 +141,7 @@ class TextMessage(ChatMessage):
 
     def __post_init__(self):
         self.content_type = "TEXT"
+        self.message_type: str = "CHAT_MESSAGE"
 
 # TODO: CHANGE STICKER DATA TO PROPER TYPE
 @dataclass

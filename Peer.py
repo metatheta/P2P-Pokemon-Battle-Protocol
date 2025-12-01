@@ -231,31 +231,31 @@ def terminate_battle(self):
     self.transport.close()
 
 def send_handshake_response(self) -> bool:
-    self.transport.sequenceNumber += 1
-    message = HandshakeResponse(sequence_number=self.transport.sequenceNumber).to_message_format()
+    self.transport.sequence_number += 1
+    message = HandshakeResponse(sequence_number=self.transport.sequence_number).to_message_format()
     return self.transport.__send__(message)
 
 def send_battle_setup(self) -> bool:
     sb = StatBoost(5,5)
-    self.transport.sequenceNumber += 1
-    message = BattleSetup(sequence_number=self.transport.sequenceNumber,
-                          pokemon_name=self.pokemon.pokemonData.name, 
+    self.transport.sequence_number += 1
+    message = BattleSetup(sequence_number=self.transport.sequence_number,
+                          pokemon_name=self.pokemon.pokemonData.name,
                           stat_boosts=sb
-                        ).to_message_format()
+                          ).to_message_format()
     return self.transport.__send__(message)
 
 def send_attack_announce(self) -> bool:
-    self.transport.sequenceNumber += 1
-    message = AttackAnnounce(sequence_number=self.transport.sequenceNumber, move_name=self.move.name).to_message_format()
+    self.transport.sequence_number += 1
+    message = AttackAnnounce(sequence_number=self.transport.sequence_number, move_name=self.move.name).to_message_format()
     return self.transport.__send__(message)
 
 def send_defense_announce(self) -> bool:
-    self.transport.sequenceNumber += 1
-    message = DefenseAnnounce(sequence_number=self.transport.sequenceNumber).to_message_format()
+    self.transport.sequence_number += 1
+    message = DefenseAnnounce(sequence_number=self.transport.sequence_number).to_message_format()
     return self.transport.__send__(message)
 
 def send_calculation_report(self) -> bool:
-    self.transport.sequenceNumber += 1
+    self.transport.sequence_number += 1
     a = self.pokemon.pokemonData.name
     b = self.move.name
     self.damage, multiplier = self.pokemon.attacker_calculation(b, self.enemyPokemon.name)
@@ -266,7 +266,7 @@ def send_calculation_report(self) -> bool:
     elif multiplier <= 0.5:
         tempMessage += ' It was not very effective...'
 
-    message = CalculationReport(sequence_number=self.transport.sequenceNumber, 
+    message = CalculationReport(sequence_number=self.transport.sequence_number,
                                 attacker=a,
                                 move_used=b,
                                 remaining_health=self.pokemon.pokemonData.hp,
@@ -277,33 +277,33 @@ def send_calculation_report(self) -> bool:
     return self.transport.__send__(message)
 
 def send_calculation_confirm(self):
-    self.transport.sequenceNumber += 1
-    message = CalculationConfirm(sequence_number=self.transport.sequenceNumber).to_message_format()
+    self.transport.sequence_number += 1
+    message = CalculationConfirm(sequence_number=self.transport.sequence_number).to_message_format()
     return self.transport.__send__(message)
 
 def send_resolution_request(self):
-    self.transport.sequenceNumber += 1
+    self.transport.sequence_number += 1
     self.enemyDamage, multiplier = self.pokemon.defender_calculation(self.enemyMove.name, self.enemyPokemon.name)
     tempHP = self.health - self.enemyDamage
-    message = ResolutionRequest(sequence_number=self.transport.sequenceNumber,
+    message = ResolutionRequest(sequence_number=self.transport.sequence_number,
                                 attacker=self.enemyPokemon.name,
                                 move_used=self.enemyMove.name,
                                 damage_dealt=self.enemyDamage,
-                                defender_hp_remaining=tempHP                         
-                               ).to_message_format()
+                                defender_hp_remaining=tempHP
+                                ).to_message_format()
     return self.transport.__send__(message)
 
 def send_game_over(self):
-    self.transport.sequenceNumber += 1
-    message = GameOver( sequence_number=self.transport.sequenceNumber,
-                        winner=self.pokemon.pokemonData.name,
-                        loser=self.enemyPokemon.name
-                        ).to_message_format()
+    self.transport.sequence_number += 1
+    message = GameOver(sequence_number=self.transport.sequence_number,
+                       winner=self.pokemon.pokemonData.name,
+                       loser=self.enemyPokemon.name
+                       ).to_message_format()
     return self.transport.__send__(message)
 
 def send_continue(self):
-    self.transport.sequenceNumber += 1
-    message = Continue(sequence_number=self.transport.sequenceNumber).to_message_format()
+    self.transport.sequence_number += 1
+    message = Continue(sequence_number=self.transport.sequence_number).to_message_format()
     return self.transport.__send__(message)
 
 def apply_enemy_hp_update(self):

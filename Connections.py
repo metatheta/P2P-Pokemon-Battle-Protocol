@@ -4,8 +4,8 @@ from Messages import Message, Acknowledgement
 
 
 # Note: AI was used to create debug scripts and identify a problem regarding
-# connections dropped during the host broadcast period. AI also helped with
-# the implementation of the retransmission logic.
+# connection messages dropped during the host broadcast period. AI also helped 
+# with the implementation of the retransmission logic.
 
 class LogicalConnection:
     read_length = 4096
