@@ -16,18 +16,19 @@ class LogicalConnection:
     LOCAL_BIND_IP = "0.0.0.0"
     MAX_RETRANSMITS = 3
 
-    def __init__(self, port_number):
+    def __init__(self, port_number, verbose_flag):
         self.port_number = port_number
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind((LogicalConnection.LOCAL_BIND_IP, self.port_number))
         self.retransmission_counter = 0
         self.sequenceNumber = 0
+        self.verbose_flag = verbose_flag
 
     def __send__(self, message: str, addr: tuple[str, int]) -> bool:
         self.socket.settimeout(0.5)  # Wait 500 ms for the ACK
         while True:
             try:
-                print(f"Attempt to send to {addr}")
+                self.log(f"Attempt to send to {addr}")
                 self.socket.sendto(message.encode(), addr)
                 data, addr = self.socket.recvfrom(LogicalConnection.read_length)
                 response_str = data.decode()
@@ -41,13 +42,14 @@ class LogicalConnection:
                     self.sequenceNumber += 1
                     self.socket.settimeout(None)
                     self.retransmission_counter = 0
-                    print("Message successfully sent")
+                    self.log("Message successfully sent")
                     return True
             except socket.timeout:
                 if self.retransmission_counter < self.MAX_RETRANSMITS:
-                    print("Timed out, resending")
+                    print(f"Timed out, resending")
                     self.retransmission_counter += 1
                 else:
+                    print(f"Max retransmits reached, failed to receive ACK")
                     return False
             except Exception as e:
                 print(f"Exception: {e}")
@@ -66,7 +68,7 @@ class LogicalConnection:
                 if int(received.get("sequence_number")) == self.sequenceNumber:
                     self.send_ack(addr)
                     self.sequenceNumber += 1
-                    print("Matching ACK received")
+                    self.log("Matching ACK received")
                     return received
 
             except Exception as e:
@@ -78,6 +80,10 @@ class LogicalConnection:
 
     def close(self):
         self.socket.close()
+
+    def log(self, message: str):
+        if self.verbose_flag:
+            print(message)
 
 
 class HostConnection(LogicalConnection):
@@ -98,7 +104,7 @@ class HostConnection(LogicalConnection):
         )
         message = DiscoveryBroadcast(self.port_number).to_message_format()
         temp.sendto(message.encode(), broadcast_addr)
-        print(f"Broadcasted using temp socket {temp.getsockname()}")
+        self.log(f"Broadcasted using temp socket {temp.getsockname()}")
         # broadcast main socket details
 
         self.socket.settimeout(5)  # Wait 5 seconds for all joiners to connect
@@ -109,9 +115,11 @@ class HostConnection(LogicalConnection):
 
                 if addr not in self.connected_peers:
                     self.connected_peers.append(addr)
+                    self.log(f"New peer from {addr} connected")
                 # The actual content of the messages they send doesn't seem to be relevant
                 # however we can add it later if the acknowledgement needs to be used in some way
             except socket.timeout:
+                self.log("Timeout reached, no peers can connect now")
                 # So the socket times out if recv doesn't complete in 5 seconds
                 break
 
@@ -146,7 +154,7 @@ class PeerConnection(LogicalConnection):
 
             if "BROADCAST" == tempDict.get("message_type"):
                 self.send_ack()
-                print(f"Sent ACK to {self.host_addr}")
+                self.log(f"Sent ACK to {self.host_addr}")
                 broadcast_receiver.close()
                 return True
 
