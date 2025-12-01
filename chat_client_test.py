@@ -21,7 +21,7 @@ if __name__ == "__main__":
 
         print("Listening for messages from other clients...")
         start_time = time.time()
-        while time.time() - start_time < 15:  # Listen for 15 seconds
+        while time.time() - start_time < 10:  # Listen for 10 seconds
             try:
                 joiner.socket.settimeout(1.0)
                 received = joiner.receive()
