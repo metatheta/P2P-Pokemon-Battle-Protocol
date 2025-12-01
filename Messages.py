@@ -28,7 +28,7 @@ class Message:
         return tempDict
 
 @dataclass
-class Broadcast(Message):
+class DiscoveryBroadcast(Message):
     host_port: int
 
     def __post_init__(self):

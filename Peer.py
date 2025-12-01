@@ -1,8 +1,8 @@
 from Messages import CalculationConfirm
 from Messages import StatBoost
 from Messages import Message
-from Transport import HostTransport
-from Transport import JoinerTransport
+from Transport import HostLogicalConnection
+from Transport import JoinerLogicalConnection
 from Messages import *
 from IO import IO
 from Data import Data
@@ -50,15 +50,15 @@ class Peer():
             match roleChoice:
                 case 1:
                     print('entered case')
-                    self.transport = HostTransport(8168)
+                    self.transport = HostLogicalConnection(8168)
                     print('finished making transport object')
-                    self.transport.broadcast()
+                    self.transport.discovery_broadcast()
                     print('Finished broadcasting')
                     self.main_loop()
                     print('entered main loop')
                 case 2:
                     print('entered case')
-                    self.transport = JoinerTransport(9279)
+                    self.transport = JoinerLogicalConnection(9279)
                     print('finished making transport object')
                     self.transport.wait_for_broadcast()
                     print('done receving broadcast')
@@ -109,7 +109,7 @@ class Peer():
                     self.enemyPokemon = Data.pokemonDataDictionary[loopDict[pokemon_name]]
                     self.enemyHealth = self.enemyPokemon.hp
 
-                    if isinstance(self.transport, HostTransport):
+                    if isinstance(self.transport, HostLogicalConnection):
                         if not self.send_battle_setup():
                             self.terminate_battle()
                         else:
@@ -233,7 +233,7 @@ def terminate_battle(self):
 def send_handshake_response(self) -> bool:
     self.transport.sequenceNumber += 1
     message = HandshakeResponse(sequence_number=self.transport.sequenceNumber).to_message_format()
-    return self.transport.send_to_peer(message)
+    return self.transport.__send__(message)
 
 def send_battle_setup(self) -> bool:
     sb = StatBoost(5,5)
@@ -242,17 +242,17 @@ def send_battle_setup(self) -> bool:
                           pokemon_name=self.pokemon.pokemonData.name, 
                           stat_boosts=sb
                         ).to_message_format()
-    return self.transport.send_to_peer(message)
+    return self.transport.__send__(message)
 
 def send_attack_announce(self) -> bool:
     self.transport.sequenceNumber += 1
     message = AttackAnnounce(sequence_number=self.transport.sequenceNumber, move_name=self.move.name).to_message_format()
-    return self.transport.send_to_peer(message)
+    return self.transport.__send__(message)
 
 def send_defense_announce(self) -> bool:
     self.transport.sequenceNumber += 1
     message = DefenseAnnounce(sequence_number=self.transport.sequenceNumber).to_message_format()
-    return self.transport.send_to_peer(message)
+    return self.transport.__send__(message)
 
 def send_calculation_report(self) -> bool:
     self.transport.sequenceNumber += 1
@@ -274,12 +274,12 @@ def send_calculation_report(self) -> bool:
                                 defender_hp_remaining= tempEnemyHP,
                                 status_message=tempMessage
                                 ).to_message_format()
-    return self.transport.send_to_peer(message)
+    return self.transport.__send__(message)
 
 def send_calculation_confirm(self):
     self.transport.sequenceNumber += 1
     message = CalculationConfirm(sequence_number=self.transport.sequenceNumber).to_message_format()
-    return self.transport.send_to_peer(message)
+    return self.transport.__send__(message)
 
 def send_resolution_request(self):
     self.transport.sequenceNumber += 1
@@ -291,7 +291,7 @@ def send_resolution_request(self):
                                 damage_dealt=self.enemyDamage,
                                 defender_hp_remaining=tempHP                         
                                ).to_message_format()
-    return self.transport.send_to_peer(message)
+    return self.transport.__send__(message)
 
 def send_game_over(self):
     self.transport.sequenceNumber += 1
@@ -299,12 +299,12 @@ def send_game_over(self):
                         winner=self.pokemon.pokemonData.name,
                         loser=self.enemyPokemon.name
                         ).to_message_format()
-    return self.transport.send_to_peer(message)
+    return self.transport.__send__(message)
 
 def send_continue(self):
     self.transport.sequenceNumber += 1
     message = Continue(sequence_number=self.transport.sequenceNumber).to_message_format()
-    return self.transport.send_to_peer(message)
+    return self.transport.__send__(message)
 
 def apply_enemy_hp_update(self):
     self.enemyHealth -= self.damage
