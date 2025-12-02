@@ -1,140 +1,166 @@
-import curses
-import threading
 import random
-import sys
-import textwrap
+import threading
+import tkinter as tk
+from tkinter import scrolledtext, simpledialog, messagebox
+from queue import Queue
+
 from Connections import PeerConnection
 from Messages import TextMessage
 
-# AI used for terminal UI.
-# External library used: windows-curses for terminal UI
+# AI was utilized for the GUI implementation.
 
+# Global state
+gui_queue = Queue()
+name = ""
+joiner = None
 
-raw_messages = []
-display_lines = []
-lock = threading.Lock()
-
-
-def receiver(joiner, name, stdscr):
-    """Background thread to receive messages."""
+def receiver_thread():
+    """Background thread that receives messages from the network."""
+    global joiner, name
     while True:
         try:
-            joiner.socket.settimeout(0.5)
+            joiner.socket.settimeout(1.0)
             r = joiner.receive()
             if r:
+                # Skip our own messages to avoid duplication
                 if r.get("sender_name") == name:
                     continue
-
-                msg_text = f"[{r.get('sender_name')}]: {r.get('message_text')}"
-
-                # Get current width to wrap immediately
-                max_y, max_x = stdscr.getmaxyx()
-                chat_width = max_x - 4
-
-                with lock:
-                    raw_messages.append(msg_text)
-                    # Wrap only the NEW message and add to display buffer
-                    wrapped = textwrap.wrap(msg_text, width=chat_width)
-                    display_lines.extend(wrapped)
+                formatted = TextMessage.format(r)
+                gui_queue.put(("MESSAGE", formatted))
         except Exception:
             continue
 
 
-def rewrap_all_messages(width):
-    """Helper to recalculate all lines only when window resizes."""
-    global display_lines
-    new_lines = []
-    for msg in raw_messages:
-        new_lines.extend(textwrap.wrap(msg, width=width))
-    display_lines = new_lines
+def send_message(chat_text, input_entry):
+    """Send a message to the network."""
+    global joiner, name
+    message_text = input_entry.get()
+    if message_text.strip():
+        m = TextMessage(joiner.send_sequence_number, name, message_text.strip())
+        joiner.send(m.to_message_format())
+
+        # Display our own message locally
+        formatted = f"[{name}]: {message_text.strip()}"
+        chat_text.config(state="normal")
+        chat_text.insert("end", formatted + "\n")
+        chat_text.see("end")
+        chat_text.config(state="disabled")
+
+        input_entry.delete(0, "end")
 
 
-def draw_ui(stdscr, joiner, name):
-    curses.start_color()
-    curses.use_default_colors()
-    curses.curs_set(1)  
-    stdscr.timeout(50)  
+def check_queue(root, chat_text):
+    """Check for new messages from the receiver thread."""
+    while not gui_queue.empty():
+        msg_type, data = gui_queue.get()
+        if msg_type == "MESSAGE":
+            chat_text.config(state="normal")
+            chat_text.insert("end", data + "\n")
+            chat_text.see("end")
+            chat_text.config(state="disabled")
 
-    input_buf = ""
-    last_h, last_w = stdscr.getmaxyx()
-
-    while True:
-        height, width = stdscr.getmaxyx()
-
-        # Detect Resize to fix layout
-        if (height, width) != (last_h, last_w):
-            with lock:
-                rewrap_all_messages(width - 4)
-            last_h, last_w = height, width
-
-        stdscr.erase()
-        stdscr.border()
+    root.after(100, check_queue, root, chat_text)
 
 
-        title = f" Chat Client: {name} (Address: {joiner.socket.getsockname()}) "
-        stdscr.addstr(0, 2, title[: width - 2])
+def create_gui():
+    """Create the main tkinter GUI."""
+    global joiner, name
 
-        chat_height = height - 4
+    root = tk.Tk()
+    root.title(f"Chat Client - {name}")
+    root.geometry("500x600")
 
-        with lock:
-            visible_lines = display_lines[-chat_height:]
+    # Title label
+    title_text = f"Chat Client: {name} ({joiner.socket.getsockname()})"
+    title_label = tk.Label(
+        root,
+        text=title_text,
+        font=("Arial", 12, "bold"),
+        bg="#2c3e50",
+        fg="white",
+        pady=10,
+    )
+    title_label.pack(fill="x")
 
-        for i, line in enumerate(visible_lines):
-            try:
-                stdscr.addstr(i + 1, 2, line)
-            except curses.error:
-                pass  # Ignore edge case errors
+    # Chat display area
+    chat_frame = tk.Frame(root)
+    chat_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-        stdscr.addstr(height - 2, 2, "> " + input_buf)
-        stdscr.refresh()
+    chat_text = scrolledtext.ScrolledText(
+        chat_frame,
+        state="disabled",
+        wrap="word",
+        font=("Consolas", 10),
+        bg="#ecf0f1",
+        fg="#2c3e50",
+    )
+    chat_text.pack(fill="both", expand=True)
 
-        try:
-            ch = stdscr.getch()
-        except KeyboardInterrupt:
-            break
+    # Store reference for images (future use)
+    chat_text.image_refs = []
 
-        if ch == -1:
-            continue
+    # Input area
+    input_frame = tk.Frame(root, bg="#34495e")
+    input_frame.pack(fill="x", padx=10, pady=10)
 
-        elif ch in (curses.KEY_ENTER, 10, 13):
-            if input_buf.strip():
-                m = TextMessage(joiner.send_sequence_number, name, input_buf.strip())
-                joiner.send(m.to_message_format())
+    input_entry = tk.Entry(input_frame, font=("Arial", 11))
+    input_entry.pack(side="left", fill="x", expand=True, padx=(0, 5), ipady=5)
 
-                local_msg = f"[{name}]: {input_buf.strip()}"
-                with lock:
-                    raw_messages.append(local_msg)
-                    # Wrap immediate
-                    display_lines.extend(textwrap.wrap(local_msg, width=width - 4))
+    send_btn = tk.Button(
+        input_frame,
+        text="Send",
+        command=lambda: send_message(chat_text, input_entry),
+        bg="#3498db",
+        fg="white",
+        font=("Arial", 10, "bold"),
+        padx=20,
+    )
+    send_btn.pack(side="right")
 
-                input_buf = ""
+    # Bind Enter key to send
+    input_entry.bind("<Return>", lambda e: send_message(chat_text, input_entry))
+    input_entry.focus()
 
-        elif ch in (curses.KEY_BACKSPACE, 127, 8):
-            input_buf = input_buf[:-1]
-        elif 32 <= ch <= 126:
-            if len(input_buf) < width - 5:
-                input_buf += chr(ch)
+    # Start queue checking
+    root.after(100, check_queue, root, chat_text)
+
+    return root
+
+
+def main():
+    global joiner, name
+
+    # Initialize connection
+    port = random.randint(8000, 9000)
+    joiner = PeerConnection(port)
+
+    # Create a temporary root for dialogs
+    temp_root = tk.Tk()
+    temp_root.withdraw()
+
+    # Get username
+    name = simpledialog.askstring("PokeProtocol Chat Client", "Enter your name:", parent=temp_root)
+    if not name:
+        name = "User"
+
+    temp_root.destroy()
+
+    # Wait for host broadcast (this happens in background, no blocking)
+    if not joiner.wait_for_broadcast():
+        root_error = tk.Tk()
+        root_error.withdraw()
+        messagebox.showerror("Connection Failed", "Failed to connect to host!")
+        root_error.destroy()
+        return
+
+    # Start receiver thread
+    t = threading.Thread(target=receiver_thread, daemon=True)
+    t.start()
+
+    # Create and run the GUI
+    root = create_gui()
+    root.mainloop()
 
 
 if __name__ == "__main__":
-    try:
-        port = random.randint(8000, 9000)
-        joiner = PeerConnection(port)
-        print("Searching for host...")
-        if joiner.wait_for_broadcast():
-            user_name = input("Enter your name: ")
-
-            t = threading.Thread(target=lambda: None)  # Placeholder
-
-            def main(stdscr):
-                t = threading.Thread(
-                    target=receiver, args=(joiner, user_name, stdscr), daemon=True
-                )
-                t.start()
-                draw_ui(stdscr, joiner, user_name)
-
-            curses.wrapper(main)
-        else:
-            print("No host found.")
-    except KeyboardInterrupt:
-        sys.exit()
+    main()

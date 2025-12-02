@@ -1,22 +1,24 @@
-import curses
 import threading
-import textwrap
+import tkinter as tk
+from tkinter import scrolledtext, simpledialog, messagebox
 import sys
-from queue import SimpleQueue
+from queue import Queue
+
 from Connections import HostConnection
 from Messages import TextMessage
 
+# AI was utilized for the GUI implementation.
+
 HOST_PORT = 9392
-message_queue = SimpleQueue()
+message_queue = Queue()
+gui_queue = Queue()
+host_name = "HOST"
+chat_host = None
 
-raw_messages = []
-display_lines = []
-lock = threading.Lock()
 
-# AI used for terminal UI.
-# External library used: windows-curses for terminal UI
-
-def receiver(chat_host, stdscr):
+def receiver_thread(root):
+    """Background thread that receives messages from clients."""
+    global chat_host
     while True:
         try:
             chat_host.socket.settimeout(0.1)
@@ -25,126 +27,179 @@ def receiver(chat_host, stdscr):
                 sender = data.get("sender_name")
                 msg_text = data.get("message_text")
                 formatted_msg = f"[{sender}]: {msg_text}"
-                max_y, max_x = stdscr.getmaxyx()
 
-                with lock:
-                    raw_messages.append(formatted_msg)
-                    display_lines.extend(textwrap.wrap(formatted_msg, width=max_x - 4))
-                
-                # Host rebroadcasts message to all connected peers
+                # Display in GUI
+                gui_queue.put(("MESSAGE", formatted_msg))
+
+                # Relay message to all connected peers
                 relay_msg = TextMessage(0, sender, msg_text)
                 message_queue.put(relay_msg)
 
+                # Update peer count
+                gui_queue.put(("PEER_COUNT", len(chat_host.connected_peers)))
         except Exception:
             continue
 
-def broadcaster(chat_host):
-    """Sends messages to ALL peers. Includes Fault Tolerance."""
+
+def broadcaster_thread():
+    """Sends messages to all connected peers."""
+    global chat_host
     while True:
-        # This is a blocking get, so it waits efficiently for a message
-        msg = message_queue.get()
+        msg = message_queue.get()  # Blocking call
 
-        # Convert once
         formatted_msg = msg.to_message_format()
-
-        # Copy the list so we don't crash if the list changes size during iteration
         peers_snapshot = list(chat_host.connected_peers)
 
         for peer in peers_snapshot:
             try:
                 chat_host.send(formatted_msg, peer)
-            except Exception as e:
+            except Exception:
                 continue
 
 
-def rewrap_all_messages(width):
-    global display_lines
-    new_lines = []
-    for msg in raw_messages:
-        new_lines.extend(textwrap.wrap(msg, width=width))
-    display_lines = new_lines
+def send_message(chat_text, input_entry):
+    """Send a message from the host."""
+    global host_name
+    message_text = input_entry.get()
+    if message_text.strip():
+        m = TextMessage(0, host_name, message_text.strip())
+        message_queue.put(m)
+
+        # Display locally
+        formatted = f"[{host_name}]: {message_text.strip()}"
+        chat_text.config(state="normal")
+        chat_text.insert("end", formatted + "\n")
+        chat_text.see("end")
+        chat_text.config(state="disabled")
+
+        input_entry.delete(0, "end")
 
 
-def draw_ui(stdscr, chat_host):
-    curses.start_color()
-    curses.use_default_colors()
-    curses.curs_set(1)
-    stdscr.timeout(50)
+def check_queue(root, chat_text, title_label):
+    """Check for new messages and updates from background threads."""
+    while not gui_queue.empty():
+        msg_type, data = gui_queue.get()
+        if msg_type == "MESSAGE":
+            chat_text.config(state="normal")
+            chat_text.insert("end", data + "\n")
+            chat_text.see("end")
+            chat_text.config(state="disabled")
+        elif msg_type == "PEER_COUNT":
+            title_label.config(
+                text=f"Host Server - Port: {HOST_PORT + 1} - Peers: {data}"
+            )
 
-    input_buf = ""
-    name = "HOST"
-    last_h, last_w = stdscr.getmaxyx()
-
-    while True:
-        height, width = stdscr.getmaxyx()
-
-        # Resize Handler
-        if (height, width) != (last_h, last_w):
-            with lock:
-                rewrap_all_messages(width - 4)
-            last_h, last_w = height, width
-
-        stdscr.erase()
-        stdscr.border()
-
-        header = f" HOST SERVER (Port: {HOST_PORT}) - Peers: {len(chat_host.connected_peers)} "
-        stdscr.addstr(0, 2, header[: width - 2])
-
-        chat_height = height - 4
-
-        with lock:
-            visible_lines = display_lines[-chat_height:]
-
-        for i, line in enumerate(visible_lines):
-            try:
-                stdscr.addstr(i + 1, 2, line)
-            except curses.error:
-                pass
-
-        stdscr.addstr(height - 2, 2, "> " + input_buf)
-        stdscr.refresh()
-
-        try:
-            ch = stdscr.getch()
-        except KeyboardInterrupt:
-            break
-
-        if ch == -1:
-            continue
-        elif ch in (curses.KEY_ENTER, 10, 13):
-            if input_buf.strip():
-                msg = TextMessage(0, name, input_buf.strip())
-                message_queue.put(msg)
-
-                local_msg = f"[{name}]: {input_buf.strip()}"
-                with lock:
-                    raw_messages.append(local_msg)
-                    display_lines.extend(textwrap.wrap(local_msg, width=width - 4))
-                input_buf = ""
-        elif ch in (curses.KEY_BACKSPACE, 127, 8):
-            input_buf = input_buf[:-1]
-        elif 32 <= ch <= 126:
-            if len(input_buf) < width - 5:
-                input_buf += chr(ch)
+    root.after(100, check_queue, root, chat_text, title_label)
 
 
-if __name__ == "__main__":
+def create_gui():
+    """Create the main tkinter GUI for the host."""
+    global chat_host, host_name
+
+    root = tk.Tk()
+    root.title(f"Chat Host - {host_name}")
+    root.geometry("500x600")
+
+    # Title label
+    title_text = (
+        f"Host Server - Port: {HOST_PORT + 1} - Peers: {len(chat_host.connected_peers)}"
+    )
+    title_label = tk.Label(
+        root,
+        text=title_text,
+        font=("Arial", 12, "bold"),
+        bg="#27ae60",
+        fg="white",
+        pady=10,
+    )
+    title_label.pack(fill="x")
+
+    # Chat display area
+    chat_frame = tk.Frame(root)
+    chat_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+    chat_text = scrolledtext.ScrolledText(
+        chat_frame,
+        state="disabled",
+        wrap="word",
+        font=("Consolas", 10),
+        bg="#ecf0f1",
+        fg="#2c3e50",
+    )
+    chat_text.pack(fill="both", expand=True)
+
+    # Store reference for images (future use)
+    chat_text.image_refs = []
+
+    # Input area
+    input_frame = tk.Frame(root, bg="#2ecc71")
+    input_frame.pack(fill="x", padx=10, pady=10)
+
+    input_entry = tk.Entry(input_frame, font=("Arial", 11))
+    input_entry.pack(side="left", fill="x", expand=True, padx=(0, 5), ipady=5)
+
+    send_btn = tk.Button(
+        input_frame,
+        text="Send",
+        command=lambda: send_message(chat_text, input_entry),
+        bg="#27ae60",
+        fg="white",
+        font=("Arial", 10, "bold"),
+        padx=20,
+    )
+    send_btn.pack(side="right")
+
+    # Bind Enter key to send
+    input_entry.bind("<Return>", lambda e: send_message(chat_text, input_entry))
+    input_entry.focus()
+
+    # Start queue checking
+    root.after(100, check_queue, root, chat_text, title_label)
+
+    return root
+
+
+def main():
+    global chat_host, host_name
+
+    # Create a temporary root for dialogs
+    temp_root = tk.Tk()
+    temp_root.withdraw()
+
+    # Get host name
+    host_name = simpledialog.askstring(
+        "Chat Host", "Enter host name:", initialvalue="HOST", parent=temp_root
+    )
+    if not host_name:
+        host_name = "HOST"
+
+    temp_root.destroy()
+
     try:
+        # Initialize host connection
         chat_host = HostConnection(HOST_PORT + 1)
         chat_host.discovery_broadcast()
 
-        t_broadcast = threading.Thread(
-            target=broadcaster, args=(chat_host,), daemon=True
-        )
+        # Create GUI first
+        root = create_gui()
+
+        # Start background threads
+        t_recv = threading.Thread(target=receiver_thread, args=(root,), daemon=True)
+        t_broadcast = threading.Thread(target=broadcaster_thread, daemon=True)
+        t_recv.start()
         t_broadcast.start()
 
-        def main(stdscr):
-            t_recv = threading.Thread(
-                target=receiver, args=(chat_host, stdscr), daemon=True
-            )
-            t_recv.start()
-            draw_ui(stdscr, chat_host)
+        # Run GUI
+        root.mainloop()
 
-        curses.wrapper(main)
     except KeyboardInterrupt:
         sys.exit()
+    except Exception as e:
+        root_error = tk.Tk()
+        root_error.withdraw()
+        messagebox.showerror("Error", f"Host error: {e}")
+        root_error.destroy()
+
+
+if __name__ == "__main__":
+    main()
