@@ -31,14 +31,14 @@ class HostPeer:
                 # if we receive a handshake request, then we send a 
                 # handshake response
                 case 'HANDSHAKE_REQUEST':
-                    self.transport.send_ack()
+                    self.conncection.send_ack(int(loopDict['sequence_number']))
                     if not self.send_handshake_response():
                         self.terminate_battle()
 
                 # if we receive a handshake response,
                 # we send a battle setup to the peer
                 case 'HANDSHAKE_RESPONSE':
-                    self.transport.send_ack()
+                    self.conncection.send_ack(int(loopDict['sequence_number']))
                     pokemonChoice = IO.ask_pokemon()
                     tempPokemonData = Data.pokemonDataDictionary[pokemonChoice]
                     moveChoice = IO.ask_move()
@@ -52,12 +52,12 @@ class HostPeer:
                 # uses a HostTransport, if that is true then we make the user
                 # choose a move then sends an attack announce
                 case 'BATTLE_SETUP':
-                    self.transport.send_ack()
+                    self.conncection.send_ack(int(loopDict['sequence_number']))
                     self.bk.foe = Data.pokemonDataDictionary[loopDict['pokemon_name']]
                     self.foeHealth = self.bk.foe.hp
 
                     # build pokemon before sending battle setup
-                    pokemonChoice = IO.ask_pokemon()
+                    pokemonChoice = IO.ask_pokemon(int(loopDict['sequence_number']))
                     tempPokemonData = Data.pokemonDataDictionary[pokemonChoice]
                     moveChoice = IO.ask_move()
                     self.bk.pokemon = Pokemon(tempPokemonData, Pokemon.make_move_tuple(moveChoice))
@@ -75,7 +75,7 @@ class HostPeer:
                 # if we receive an attack announce, we send the 
                 # acknowledgement known as the defense announce
                 case 'ATTACK_ANNOUNCE':
-                    self.transport.send_ack()
+                    self.conncection.send_ack(int(loopDict['sequence_number']))
                     self.bk.foeMove = Data.moveDictionary[loopDict['move_name'].lower()]
                     if not self.send_defense_announce():
                         self.terminate_battle()
@@ -83,7 +83,7 @@ class HostPeer:
                 # if we receive a defense announce, we send the 
                 # acknowledgement known as the calculation report
                 case 'DEFENSE_ANNOUNCE':
-                    self.transport.send_ack()
+                    self.conncection.send_ack(int(loopDict['sequence_number']))
                     if not self.send_calculation_report():
                         self.terminate_battle()
 
@@ -95,7 +95,7 @@ class HostPeer:
                 # if it does not match we send our calculation 
                 # through a resolution request
                 case 'CALCULATION_REPORT':
-                    self.transport.send_ack()
+                    self.conncection.send_ack(int(loopDict['sequence_number']))
                     self.bk.foeDamage, multiplier = self.bk.pokemon.defender_calculation(self.bk.foeMove.name, self.bk.foe.name)
                     if self.bk.foeDamage == float(loopDict['damage_dealt']):
                         self.apply_own_hp_update()
@@ -114,7 +114,7 @@ class HostPeer:
                 # since this the end of the 4 way acknowledgement 
                 # we just need to update the enemy hp
                 case 'CALCULATION_CONFIRM':
-                    self.transport.send_ack()
+                    self.conncection.send_ack(int(loopDict['sequence_number']))
                     self.apply_enemy_hp_update()
                     if self.bk.foe.hp <= 0:
                         if not self.send_game_over():
@@ -136,7 +136,7 @@ class HostPeer:
                 case 'RESOLUTION_REQUEST':
                     self.bk.damage, multiplier = self.bk.pokemon.attacker_calculation(self.bk.move.name, self.bk.foe.name)
                     if self.bk.damage == float(loopDict['damage_dealt']):
-                        self.transport.send_ack()
+                        self.conncection.send_ack(int(loopDict['sequence_number']))
                         self.apply_enemy_hp_update()
                         if self.bk.foe.hp <= 0:
                             if not self.send_game_over():
@@ -155,7 +155,7 @@ class HostPeer:
                 # if we receive a game over message it means that
                 # our pokemon fainted and the program shits down
                 case 'GAME_OVER':
-                    self.transport.send_ack()
+                    self.conncection.send_ack(int(loopDict['sequence_number']))
                     print(f'{loopDict['loser']} is unable to battle.')
                     print(f'The winner of this match is {loopDict['winner']}')
                     print('Program shutting down...')
@@ -165,6 +165,7 @@ class HostPeer:
                 # we receive this when our pokemon can still fight
                 # after receiving an attack
                 case 'CONTINUE':
+                    self.conncection.send_ack(int(loopDict['sequence_number']))
                     moveIndex = IO.choose_attack(self.bk.pokemon.pokemonData.name, self.bk.pokemon.moveTuple)
                     self.bk.move = Data.moveDictionary[self.bk.pokemon.moveTuple[moveIndex].name.lower()]
                     if not self.send_attack_announce():
