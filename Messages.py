@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from dataclasses import asdict
 from dataclasses import field
-
+import uuid
 
 # this it the parent class that has the message_type
 # and the toMessageFormat() method
@@ -155,9 +155,9 @@ class Continue(MainMessage):
 @dataclass
 class TextMessage(ChatMessage):
     message_text: str
+    content_type: str = field(default="TEXT", init=False)
 
     def __post_init__(self):
-        self.content_type = "TEXT"
         self.message_type: str = "CHAT_MESSAGE"
 
     @staticmethod
@@ -165,10 +165,29 @@ class TextMessage(ChatMessage):
         return f"[{message.get('sender_name')}]: {message.get('message_text')}"
 
 
-# TODO: CHANGE STICKER DATA TO PROPER TYPE
 @dataclass
 class StickerMessage(ChatMessage):
-    sticker_data: any
+    chunk_number: int
+    sticker_data: str
+    content_type: str = field(default="STICKER", init=False)
+    # Base64 encoded string for the sticker image
 
     def __post_init__(self):
-        self.content_type: str = "STICKER"
+        self.message_type: str = "CHAT_MESSAGE"
+
+@dataclass
+class StickerFragment(MainMessage):
+    sticker_id: str
+    sender_name: str
+    chunk_index: int
+    total_chunks: int
+    fragment_data: str
+
+    def __post_init__(self):
+        self.message_type: str = "STICKER_FRAGMENT"
+
+# To minimize the effects of IP-layer fragmentation, we'll do the fragmenting ourselves
+# We could technically just leave the fragmenting up to the IP layer, but by doing so
+# the system becomes fragile and redundant because even the tiniest missing IP fragment
+# invalidates the entire sticker datagram. That's why it's better to fragment it ourselves 
+# instead of relying solely on the IP layer to handle it.
