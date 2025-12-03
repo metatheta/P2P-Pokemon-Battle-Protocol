@@ -37,6 +37,10 @@ def receiver_thread():
                     fragment_data = r.get("fragment_data")
                     sender_name = r.get("sender_name")
 
+                    # Skip our own messages to avoid duplication (stickers)
+                    if r.get("sender_name") == name:
+                        continue
+
                     # Initialize buffer for this sticker if needed
                     if sticker_id not in sticker_buffers:
                         sticker_buffers[sticker_id] = {
@@ -60,10 +64,11 @@ def receiver_thread():
                         del sticker_buffers[sticker_id]
                     continue
 
-                # Skip our own messages to avoid duplication
+                formatted = TextMessage.format(r)
+                # Skip our own messages to avoid duplication (text messages)
                 if r.get("sender_name") == name:
                     continue
-                formatted = TextMessage.format(r)
+
                 gui_queue.put(("MESSAGE", formatted))
         except Exception:
             continue
