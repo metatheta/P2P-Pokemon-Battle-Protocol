@@ -70,7 +70,7 @@ class LogicalConnection:
                 else:
                     self.socket.settimeout(None)
                     self.retransmission_counter = 0
-                    self.log(f"Max retransmits reached, failed to receive ACK")
+                    self.log("Max retransmits reached, failed to receive ACK")
                     return False
             except Exception:
                 self.socket.settimeout(None)

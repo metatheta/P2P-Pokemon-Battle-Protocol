@@ -189,7 +189,7 @@ class ConnectorPeer():
     """
     def terminate_battle(self):
         print('Connection lost... battle over... shutting down...')
-        self.connection.close()
+        #self.connection.close()
 
     def send_handshake_request(self) -> bool:
         message = HandshakeRequest(self.connection.send_sequence_number).to_message_format()
