@@ -145,6 +145,10 @@ class ChatMessage(MainMessage):
     def __post_init__(self):
         self.message_type: str = "CHAT_MESSAGE"
 
+@dataclass
+class BattlerNotification(MainMessage):
+    def __post_init__(self):
+        self.message_type: str = 'BATTLER_NOTIFICATION'
 
 @dataclass
 class Continue(MainMessage):

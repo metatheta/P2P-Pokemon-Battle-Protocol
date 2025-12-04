@@ -55,6 +55,7 @@ class Data:
         return getattr(defender_matchups, attackerType.lower())
     
     # method that reads all the pokemon from the csv file
+    @staticmethod
     def populate_pokemon_data():
         with open('pokemon.csv', 'r', encoding='utf-8') as file:
             reader = csv.DictReader(file)
@@ -76,6 +77,7 @@ class Data:
     
     # methods that reads the first 18 monotype pokemon
     # from the csv and records the type match up
+    @staticmethod
     def populate_match_ups():
         with open('pokemon.csv', 'r', encoding='utf-8') as file:
             reader = csv.DictReader(file)

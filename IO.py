@@ -1,27 +1,57 @@
 from Data import Data
 from Templates import Move
+import re
 
 class IO:
-    def get_role(self) -> int:
+    @staticmethod
+    def get_role() -> int:
         print('Dear Trainer, welcome to the wonderful world of Pokemon')
         print('In this P2P game you will need to choose a role')
-        self.print_role_list()
+        IO.print_role_list()
         choice = -1 
-        while choice not in range(1, 4):
+        while choice not in range(1, 3):
             try:
                 choice = int(input('Please choose the number of the role you want: '))
             except ValueError:
-                print("Invalid input. Please enter a number (1, 2, or 3).")
+                print("Invalid input. Please enter a number (1 or 2)")
                 choice = -1
         return choice
         
-    def print_role_list(self):
+    @staticmethod
+    def print_role_list():
         print('The choices are:')
         print('1] Host - sends a battle request')
-        print('2] Joiner - waits for a host to send a battle request')
-        print('3] Spectator - watches the battle but does not participate')
+        print('2] Connector - waits for a host to send a battle request')
 
-    def ask_pokemon(self) -> str:
+    @staticmethod
+    def get_conncector_peer_role(battlerAvailable: bool) -> int:
+        if battlerAvailable:
+            print('Choose a role as a non-host:')
+            print('1] Spectator')
+            print('2] Battler')
+            
+            answer = int(input('Please enter the number of your choice: '))
+            while answer not in range(1, 3):
+                try:
+                    answer = int(input('Please enter the number of your choice: '))
+                except ValueError:
+                    print("Invalid input. Please enter a number (1 or 2)")
+                    answer = -1
+            return answer
+        else:
+            print('Choose a role as a non-host:')
+            print('1] Spectator')
+            answer = int(input('Please enter the number of your choice: '))
+            while answer not in range(1, 2):
+                try:
+                    answer = int(input('Please enter the number of your choice: '))
+                except ValueError:
+                    print("Invalid input. Please enter 1")
+                    answer = -1
+            return answer
+
+    @staticmethod
+    def ask_pokemon() -> str:
         print('What Pokemon would you like to battle with?')
         pokemon = None
         while pokemon is None:
@@ -29,23 +59,38 @@ class IO:
             pokemon = Data.pokemonDataDictionary.get(pokemonName)
         return pokemonName
 
-    def ask_move(self, whichMoveNumber: int, moveDict: dict[Move]) -> str:
-        print(f'What do you want move {whichMoveNumber} of your pokemon to be?')
+    @staticmethod
+    def ask_move() -> str:
+        print('What moves do you want your pokemon to have?')
         print('Choose from the list below:')
-        self.print_moves(moveDict)
-        move = None
-        while move is None:
-            moveName = input('Please enter the name of the move: ').lower()
-            move = Data.moveDictionary.get(moveName)
-        return moveName
+        IO.print_moves()
+        answer = input('Enter 4 appropriate numbers separated by commas: ')
+        while not IO.is_four_ints(answer):
+            answer = input('Enter 4 appropriate numbers separated by commas: ')
+        return answer
 
-    def print_moves(self, moveDict: dict[Move]):
+    @staticmethod
+    def print_moves():
+        moveDict = Data.moveDictionary
         number = 1
+        row = ""
+
         for key, move in moveDict.items():
-            print(f'{number}] {move.name}')
+            row += f"{number}] {move.name:<25}"
+
+            if number % 3 == 0:
+                print(row)
+                row = ""
+
             number += 1
 
-    def choose_attack(self, pokemonName: str, moveTuple: tuple[Move]) -> int:
+    @staticmethod
+    def is_four_ints(input: str) -> bool:
+        pattern = r'^\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*\d+\s*$'
+        return bool(re.match(pattern, input))
+
+    @staticmethod
+    def choose_attack(pokemonName: str, moveTuple: tuple[Move]) -> int:
         print('You are attacking now!')
         print(f'Please choose an attack for {pokemonName} to use from the list below:')
         print(f"{pokemonName}'s moves:")
@@ -56,7 +101,7 @@ class IO:
         choice = 0
         while choice not in range(1, 5):
             try:
-                choice = int(input('Please choose the number of the role you want: '))
+                choice = int(input('Please choose the number of the move you want: '))
             except ValueError:
                 print("Invalid input. Please enter a number (1, 2, 3, or 4).")
                 choice = -1
