@@ -4,5 +4,6 @@ version = "0.1.0"
 description = "UDP Socket Programming implementation of a Pokemon game"
 requires-python = ">=3.13"
 dependencies = [
-    "term-image>=0.7.2",
+    "pillow>=10.4.0",
+    "windows-curses>=2.4.1",
 ]
