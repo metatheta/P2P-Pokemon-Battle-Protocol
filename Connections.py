@@ -13,7 +13,9 @@ class LogicalConnection:
     def __init__(self, port_number, verbose_flag=False):
         self.port_number = port_number
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        print('done making socket')
         self.socket.bind((LogicalConnection.LOCAL_BIND_IP, self.port_number))
+        print(f'done binding to {self.LOCAL_BIND_IP} and {self.port_number}')
         self.retransmission_counter = 0
         self.send_sequence_number = 0
         self.receive_sequence_number = 0
@@ -88,6 +90,7 @@ class LogicalConnection:
                     self.send_ack(addr, self.receive_sequence_number)
                     self.receive_sequence_number += 1
                     self.log("Matching ACK received")
+                    received["sender_addr"] = addr
                     return received
                 elif (
                     int(received.get("sequence_number")) < self.receive_sequence_number

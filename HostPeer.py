@@ -12,8 +12,10 @@ class HostPeer:
     def __init__(self):
         self.connection = HostConnection(8168)
         self.connection.discovery_broadcast()
+        self.battlerAddress = self.connection.receive().get('sender_addr')
+        print(f'done getting battler addr: {self.battlerAddress}')
         self.bk = BattlerKit()
-        #self.battlerAddress = #function call for battsler receive
+        print('done making battler kit')
         self.main_loop()
 
     def main_loop(self):
@@ -36,18 +38,8 @@ class HostPeer:
                     self.connection.send_ack(int(loopDict['sequence_number']))
                     if not self.send_handshake_response():
                         self.terminate_battle()
-
-                # if we receive a handshake response,
-                # we send a battle setup to the peer
-                case 'HANDSHAKE_RESPONSE':
-                    self.connection.send_ack(int(loopDict['sequence_number']))
-                    pokemonChoice = IO.ask_pokemon()
-                    tempPokemonData = Data.pokemonDataDictionary[pokemonChoice]
-                    moveChoice = IO.ask_move()
-                    self.bk.pokemon = Pokemon(tempPokemonData, Pokemon.make_move_tuple(moveChoice))
-                    self.bk.health = self.bk.pokemon.pokemonData.hp
-                    if not self.send_battle_setup():
-                        self.terminate_battle()
+                    else:
+                        print('Host sent Handsake Response')
 
                 # if we receive a battle setup we initialize the values
                 # for the enemy pokemon, we check if the current peer
@@ -68,10 +60,13 @@ class HostPeer:
                     if not self.send_battle_setup():
                         self.terminate_battle()
                     else:
+                        print('Host sent Battle Setup')
                         moveIndex = IO.choose_attack(self.bk.pokemon.pokemonData.name, self.bk.pokemon.moveTuple)
                         self.bk.move = Data.moveDictionary[self.bk.pokemon.moveTuple[moveIndex].name.lower()]
                         if not self.send_attack_announce():
                             self.terminate_battle()
+                        else:
+                            print('Host sent Attack Announce')
                            
 
                 # if we receive an attack announce, we send the 
@@ -81,6 +76,8 @@ class HostPeer:
                     self.bk.foeMove = Data.moveDictionary[loopDict['move_name'].lower()]
                     if not self.send_defense_announce():
                         self.terminate_battle()
+                    else:
+                        print('Host sent Defense Announce')
 
                 # if we receive a defense announce, we send the 
                 # acknowledgement known as the calculation report
@@ -88,6 +85,8 @@ class HostPeer:
                     self.connection.send_ack(int(loopDict['sequence_number']))
                     if not self.send_calculation_report():
                         self.terminate_battle()
+                    else:
+                        print('Host sent Calculation Report')
 
                 # if we receive a calculation report, we check
                 # if the report matches our report, if it does
@@ -189,7 +188,7 @@ class HostPeer:
     def send_handshake_response(self) -> bool:
         SQ.sequence_number += 1
         message = HandshakeResponse(sequence_number=SQ.sequence_number).to_message_format()
-        return self.connection.send(message)
+        return self.connection.send(message=message, addr=self.battlerAddress)
 
     def send_battle_setup(self) -> bool:
         sb = StatBoost(5,5)
@@ -198,17 +197,17 @@ class HostPeer:
                             pokemon_name=self.bk.pokemon.pokemonData.name,
                             stat_boosts=sb
                             ).to_message_format()
-        return self.connection.send(message)
+        return self.connection.send(message=message, addr=self.battlerAddress)
 
     def send_attack_announce(self) -> bool:
         SQ.sequence_number += 1
         message = AttackAnnounce(sequence_number=SQ.sequence_number, move_name=self.bk.move.name).to_message_format()
-        return self.connection.send(message)
+        return self.connection.send(message=message, addr=self.battlerAddress)
 
     def send_defense_announce(self) -> bool:
         SQ.sequence_number += 1
         message = DefenseAnnounce(sequence_number=SQ.sequence_number).to_message_format()
-        return self.connection.send(message)
+        return self.connection.send(message=message, addr=self.battlerAddress)
 
     def send_calculation_report(self) -> bool:
         SQ.sequence_number += 1
@@ -230,12 +229,12 @@ class HostPeer:
                                     defender_hp_remaining= tempEnemyHP,
                                     status_message=tempMessage
                                     ).to_message_format()
-        return self.connection.send(message)
+        return self.connection.send(message=message, addr=self.battlerAddress)
 
     def send_calculation_confirm(self):
         SQ.sequence_number += 1
         message = CalculationConfirm(sequence_number=SQ.sequence_number).to_message_format()
-        return self.connection.send(message)
+        return self.connection.send(message=message, addr=self.battlerAddress)
 
     def send_resolution_request(self):
         SQ.sequence_number += 1
@@ -247,7 +246,7 @@ class HostPeer:
                                     damage_dealt=self.bk.foeDamage,
                                     defender_hp_remaining=tempHP
                                     ).to_message_format()
-        return self.connection.send(message)
+        return self.connection.send(message=message, addr=self.battlerAddress)
 
     def send_game_over(self):
         SQ.sequence_number += 1
@@ -255,12 +254,12 @@ class HostPeer:
                         winner=self.bk.pokemon.pokemonData.name,
                         loser=self.bk.foe.name
                         ).to_message_format()
-        return self.connection.send(message)
+        return self.connection.send(message=message, addr=self.battlerAddress)
 
     def send_continue(self):
         SQ.sequence_number += 1
         message = Continue(sequence_number=SQ.sequence_number).to_message_format()
-        return self.connection.send(message)
+        return self.connection.send(message=message, addr=self.battlerAddress)
     
     def apply_enemy_hp_update(self):
         self.bk.foeHealth -= self.bk.damage

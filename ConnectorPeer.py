@@ -14,6 +14,7 @@ class ConnectorPeer():
     def __init__(self):
         self.connection = PeerConnection(random.randint(6000, 9999))
         self.connection.wait_for_broadcast()
+        print('done waiting for broadcast')
         choice = IO.get_conncector_peer_role(ConnectorPeer.battlerAvailable)
         match choice:
             case 1:
@@ -23,15 +24,19 @@ class ConnectorPeer():
                 ConnectorPeer.battlerAvailable = False
                 if not self.send_battler_notification():
                     self.terminate_battle()
+                else: 
+                    print('battler notification sent')
                 self.bk = BattlerKit()
-                self.main_loop()
+                print('done making battler kit')
 
     def main_loop(self):
         print("--- MAIN LOOP STARTED ---")
         loopDict = {}
 
         if not self.send_handshake_request():
-                        self.terminate_battle()
+            self.terminate_battle()
+        else:
+            print('Joiner sent Handsake Request')
         
         while True:
             print('--- ENTERED WHILE TRUE---')
@@ -57,6 +62,8 @@ class ConnectorPeer():
 
                     if not self.send_battle_setup():
                         self.terminate_battle()
+                    else:
+                        print('Joiner sent Battle Setup')
 
                 # if we receive a battle setup we initialize the values
                 # for the enemy pokemon, we check if the current peer
@@ -75,6 +82,8 @@ class ConnectorPeer():
                     self.bk.foeMove = Data.moveDictionary[loopDict['move_name'].lower()]
                     if not self.send_defense_announce():
                         self.terminate_battle()
+                    else:
+                        print('Joiner sent Attack Announce')
 
                 # if we receive a defense announce, we send the 
                 # acknowledgement known as the calculation report
@@ -82,6 +91,8 @@ class ConnectorPeer():
                     self.connection.send_ack()
                     if not self.send_calculation_report():
                         self.terminate_battle()
+                    else:
+                        print('Joiner sent Defense Announce')
 
                 # if we receive a calculation report, we check
                 # if the report matches our report, if it does
@@ -181,8 +192,7 @@ class ConnectorPeer():
         self.connection.close()
 
     def send_handshake_request(self) -> bool:
-        SQ.sequence_number += 1
-        message = HandshakeRequest(sequence_number=SQ.sequence_number).to_message_format()
+        message = HandshakeRequest(self.connection.send_sequence_number).to_message_format()
         return self.connection.send(message)
     
     def send_handshake_response(self) -> bool:
