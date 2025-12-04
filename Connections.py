@@ -104,6 +104,21 @@ class LogicalConnection:
         ack = Acknowledgement(ack_num)
         self.socket.sendto(ack.to_message_format().encode(), addr)
 
+    def send_fragment(self, message: str):
+        """Send a sticker fragment - fire and forget with proper sequence number."""
+        # Parse message and update sequence number
+        msg_fields = Message.from_message_format(message)
+        msg_fields["sequence_number"] = str(self.send_sequence_number)
+
+        # Rebuild message
+        rebuilt_msg = ""
+        for k, v in msg_fields.items():
+            rebuilt_msg += f"{k}: {v}\n"
+
+        # Send without waiting for ACK (fragments use their own reassembly)
+        self.socket.sendto(rebuilt_msg.encode(), self.host_addr)
+        self.send_sequence_number += 1
+
     def close(self):
         self.socket.close()
 
@@ -152,7 +167,7 @@ class HostConnection(LogicalConnection):
         temp.sendto(message.encode(), broadcast_addr)
         print(f"Broadcasted using temp socket {temp.getsockname()}")
 
-        self.socket.settimeout(5)
+        self.socket.settimeout(3)
         while True:
             try:
                 data, addr = self.socket.recvfrom(LogicalConnection.read_length)
@@ -191,6 +206,26 @@ class HostConnection(LogicalConnection):
 
         self.socket.settimeout(None)
         temp.close()
+
+    def send_fragment_broadcast(self, message: str):
+        """Broadcast a sticker fragment to all connected peers - fire and forget."""
+        for peer_addr in list(self.connected_peers.keys()):
+            # Initialize sequence number for this peer if not exists
+            if peer_addr not in self.send_sequence_numbers:
+                self.send_sequence_numbers[peer_addr] = 0
+
+            # Parse message and inject sequence number for this specific peer
+            msg_fields = Message.from_message_format(message)
+            msg_fields["sequence_number"] = str(self.send_sequence_numbers[peer_addr])
+
+            # Rebuild message
+            rebuilt_msg = ""
+            for k, v in msg_fields.items():
+                rebuilt_msg += f"{k}: {v}\n"
+
+            # Send without waiting for ACK (fragments use their own reassembly)
+            self.socket.sendto(rebuilt_msg.encode(), peer_addr)
+            self.send_sequence_numbers[peer_addr] += 1
 
     def receive(self) -> dict | None:
         # First, check if there are buffered messages from discovery
@@ -283,5 +318,6 @@ class PeerConnection(LogicalConnection):
         if ack_num is None:
             ack_num = addr_or_ack_num
         super().send_ack(self.host_addr, ack_num)
+
 
 # TODO add verbose mode flag to make most of this logging optional

@@ -30,10 +30,10 @@ class IO:
             print('1] Spectator')
             print('2] Battler')
             
-            answer = input('Please enter the number of your choice: ')
+            answer = int(input('Please enter the number of your choice: '))
             while answer not in range(1, 3):
                 try:
-                    answer = input('Please enter the number of your choice: ')
+                    answer = int(input('Please enter the number of your choice: '))
                 except ValueError:
                     print("Invalid input. Please enter a number (1 or 2)")
                     answer = -1
@@ -41,10 +41,10 @@ class IO:
         else:
             print('Choose a role as a non-host:')
             print('1] Spectator')
-            answer = input('Please enter the number of your choice: ')
+            answer = int(input('Please enter the number of your choice: '))
             while answer not in range(1, 2):
                 try:
-                    answer = input('Please enter the number of your choice: ')
+                    answer = int(input('Please enter the number of your choice: '))
                 except ValueError:
                     print("Invalid input. Please enter 1")
                     answer = -1

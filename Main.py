@@ -1,4 +1,3 @@
-from Peer import Peer
 from Data import Data
 from HostPeer import HostPeer
 from ConnectorPeer import ConnectorPeer
