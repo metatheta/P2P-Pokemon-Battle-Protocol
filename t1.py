@@ -9,6 +9,6 @@ print('host finish broadcasting')
 tempDict = host.receive()
 print('host received something')
 
-print(f'host received {tempDict['messageType']}')
+print(f'host received {tempDict['message_type']}')
 print(f'host received from {tempDict['from']}')
 print(f'with sequence number {tempDict['sequence_number']}')
