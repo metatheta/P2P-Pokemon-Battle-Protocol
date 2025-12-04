@@ -10,13 +10,14 @@ class LogicalConnection:
     LOCAL_BIND_IP = "0.0.0.0"
     MAX_RETRANSMITS = 3
 
-    def __init__(self, port_number):
+    def __init__(self, port_number, verbose_flag=False):
         self.port_number = port_number
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind((LogicalConnection.LOCAL_BIND_IP, self.port_number))
         self.retransmission_counter = 0
         self.send_sequence_number = 0
         self.receive_sequence_number = 0
+        self.verbose_flag = verbose_flag
 
     def __send__(self, message: str, addr: tuple[str, int]) -> bool:
         # Try to extract sequence number from message to know what ACK to expect
@@ -30,7 +31,7 @@ class LogicalConnection:
         self.socket.settimeout(0.5)
         while True:
             try:
-                # print(f"Attempt to send to {addr}")
+                self.log(f"Attempt to send to {addr}")
                 self.socket.sendto(message.encode(), addr)
 
                 # Wait for ACK
@@ -49,24 +50,25 @@ class LogicalConnection:
                             # Only increment internal counter if we were using it
                             if expected_ack == self.send_sequence_number:
                                 self.send_sequence_number += 1
-
                             self.socket.settimeout(None)
                             self.retransmission_counter = 0
-                            # print("Message successfully sent")
+                            self.log("Message successfully sent")
+                            self.delimited_message(response_str)
                             return True
                     except socket.timeout:
-                        raise  # Re-raise to trigger retransmission logic
+                        raise # Re-raise to trigger retransmission logic
                     except Exception:
                         # Ignore malformed packets or other errors while waiting for ACK
                         continue
 
             except socket.timeout:
                 if self.retransmission_counter < self.MAX_RETRANSMITS:
-                    # print("Timed out, resending")
+                    self.log("Timed out, resending")
                     self.retransmission_counter += 1
                 else:
                     self.socket.settimeout(None)
                     self.retransmission_counter = 0
+                    self.log(f"Max retransmits reached, failed to receive ACK")
                     return False
             except Exception:
                 self.socket.settimeout(None)
@@ -85,13 +87,13 @@ class LogicalConnection:
                 if int(received.get("sequence_number")) == self.receive_sequence_number:
                     self.send_ack(addr, self.receive_sequence_number)
                     self.receive_sequence_number += 1
-                    # print("Matching ACK received")
+                    self.log("Matching ACK received")
                     return received
                 elif (
                     int(received.get("sequence_number")) < self.receive_sequence_number
                 ):
                     # Duplicate packet, resend ACK
-                    print(
+                    self.log(
                         f"Duplicate packet {received.get('sequence_number')} received, resending ACK"
                     )
                     self.send_ack(addr, int(received.get("sequence_number")))
@@ -121,6 +123,27 @@ class LogicalConnection:
 
     def close(self):
         self.socket.close()
+
+    ## Logs any error handling or reliability messages
+    def log(self, message: str):
+        if self.verbose_flag:
+            print(message)
+
+    def delimited_message(self, message: str):
+        if self.verbose_flag:
+            print("Message sent: ")
+            lines = message.strip().splitlines()
+            result = "{\n"
+
+            for i, line in enumerate(lines):
+                result += "\t" + line
+                if i != len(lines) - 1:
+                    result += ','
+                result += '\n'
+            result += "}"
+
+            print(result)
+
 
 
 class HostConnection(LogicalConnection):
@@ -165,7 +188,8 @@ class HostConnection(LogicalConnection):
         )
         message = DiscoveryBroadcast(self.port_number).to_message_format()
         temp.sendto(message.encode(), broadcast_addr)
-        print(f"Broadcasted using temp socket {temp.getsockname()}")
+        self.log(f"Broadcasted using temp socket {temp.getsockname()}")
+        # broadcast main socket details
 
         self.socket.settimeout(3)
         while True:
@@ -176,6 +200,7 @@ class HostConnection(LogicalConnection):
 
                 if received.get("message_type") == "ACKNOWLEDGEMENT":
                     self.connected_peers.setdefault(addr, 0)
+                    self.log(f"New peer from {addr} connected")
                 else:
                     # Non-ACK message arrived during discovery
                     # Send ACK immediately so sender doesn't timeout
@@ -184,7 +209,7 @@ class HostConnection(LogicalConnection):
                         incoming_seq = int(received.get("sequence_number"))
                         if incoming_seq == expected_seq:
                             self.send_ack(addr, ack_num=incoming_seq)
-                            print(
+                            self.log(
                                 f"ACKed and buffering message during discovery: {received.get('message_type')}"
                             )
                             self.message_buffer.append((received, addr))
@@ -192,16 +217,17 @@ class HostConnection(LogicalConnection):
                         elif incoming_seq < expected_seq:
                             # Duplicate, just ACK it
                             self.send_ack(addr, ack_num=incoming_seq)
-                            print(
+                            self.log(
                                 f"ACKed duplicate during discovery: seq {incoming_seq}"
                             )
                     else:
                         # Message from unknown peer, buffer it anyway
-                        print(
+                        self.log(
                             f"Buffering message from unknown peer during discovery: {received.get('message_type')}"
                         )
                         self.message_buffer.append((received, addr))
             except socket.timeout:
+                self.log("Timeout reached, no peers can connect now")
                 break
 
         self.socket.settimeout(None)
@@ -307,7 +333,7 @@ class PeerConnection(LogicalConnection):
 
             if "BROADCAST" == tempDict.get("message_type"):
                 self.send_ack(0)
-                print(f"Sent ACK to {self.host_addr}")
+                self.log(f"Sent ACK to {self.host_addr}")
                 broadcast_receiver.close()
                 return True
 
