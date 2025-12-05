@@ -306,6 +306,7 @@ class HostConnection(LogicalConnection):
                 if incoming == expected:
                     self.send_ack(addr, ack_num=incoming)
                     self.connected_peers[addr] += 1
+                    received["sender_addr"] = addr
                     return received
                 elif incoming < expected:
                     # Duplicate packet, resend ACK

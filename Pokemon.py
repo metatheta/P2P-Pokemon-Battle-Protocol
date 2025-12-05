@@ -35,7 +35,7 @@ class Pokemon:
                 Data.get_match_up_multiplier(move.moveType.lower(), self.pokemonData.type1.lower()) /
                 self.pokemonData.spdef 
             )
-
+            print(f'base power: {move.basePower}\nspatt: {opponent.spatt}\nspdef: {self.pokemonData.spdef}')
         else:
             # calculate the damage using the opponent pokemon's attck and the defense of the user's pokemon
             damage = (
@@ -44,6 +44,7 @@ class Pokemon:
                 Data.get_match_up_multiplier(move.moveType.lower(), self.pokemonData.type1.lower()) /
                 self.pokemonData.defense 
             )
+            print(f'base power: {move.basePower}\natt: {opponent.attack}\ndef: {self.pokemonData.defense}')
             
         damageMultiplier *= Data.get_match_up_multiplier(move.moveType.lower(), self.pokemonData.type1.lower())
 
@@ -71,6 +72,7 @@ class Pokemon:
                 Data.get_match_up_multiplier(move.moveType.lower(), opponent.type1.lower()) /
                 opponent.spdef 
             )
+            print(f'base power: {move.basePower}\nspatt: {self.pokemonData.spatt}\nspdef: {opponent.spdef}')
 
         else:
             # calculate the damage using the opponent pokemon's defense and the attack of the user's pokemon
@@ -80,6 +82,7 @@ class Pokemon:
                 Data.get_match_up_multiplier(move.moveType.lower(), opponent.type1.lower()) /
                 opponent.defense 
             )
+            print(f'base power: {move.basePower}\natt: {self.pokemonData.attack}\ndef: {opponent.defense}')
             
         damageMultiplier *= Data.get_match_up_multiplier(move.moveType.lower(), opponent.type1.lower())
 
@@ -87,5 +90,7 @@ class Pokemon:
         if opponent.type2:
             damage *= Data.get_match_up_multiplier(move.moveType.lower(), opponent.type2.lower())
             damageMultiplier *= Data.get_match_up_multiplier(move.moveType.lower(), opponent.type2.lower())
+
+        
 
         return round(damage, 2), damageMultiplier

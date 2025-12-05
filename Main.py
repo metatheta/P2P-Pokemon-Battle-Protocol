@@ -12,6 +12,7 @@ if __name__ == '__main__':
     match choice:
         case 1:
             hostPeer = HostPeer()
+            print('End of the game, thank you for playing')
         case 2:
             connectorPeer = ConnectorPeer()
-    
+            print('End of the game, thank you for playing')
