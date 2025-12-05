@@ -22,6 +22,8 @@ import chat_host
 import chat_client
 
 
+# AI utilized for GUI implementation.
+
 class TextRedirector(io.StringIO):
     """Redirects stdout to a text widget."""
 

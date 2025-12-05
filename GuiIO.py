@@ -5,6 +5,7 @@ import time
 from Data import Data
 from Templates import Move
 
+# AI utilized for GUI implementation.
 
 class NonModalDialog:
     """A non-modal dialog that doesn't block the main window."""
