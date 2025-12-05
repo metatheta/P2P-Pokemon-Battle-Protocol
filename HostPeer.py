@@ -17,6 +17,7 @@ from Messages import (
     StatBoost,
     Continue,
     HostReady,
+    Message,
 )
 
 
@@ -43,8 +44,8 @@ class HostPeer:
             match loopDict["message_type"]:
                 case "BATTLER_NOTIFICATION":
                     self.battlerAddress = loopDict.get("sender_addr")
-                    print(f"done getting battler addr: {self.battlerAddress}")
-
+                    print(f"Battler located: {self.battlerAddress}")
+                    self.echo_to_spectators(Message.dict_to_message(loopDict))
                     if not self.send_host_ready():
                         self.terminate_battle()
                     else:
@@ -56,7 +57,13 @@ class HostPeer:
                     if not self.send_handshake_response():
                         self.terminate_battle()
                     else:
-                        print("Host sent Handsake Response")
+                        print("Host sent Handshake Response")
+
+                case "SPECTATOR_REQUEST":
+                    if not self.send_spectator_response(loopDict["sender_addr"]):
+                        self.terminate_battle()
+                    else:
+                        print("Host sent Spectator Handshake Response")
 
                 # if we receive a battle setup we initialize the values
                 # for the enemy pokemon, we check if the current peer
@@ -77,6 +84,8 @@ class HostPeer:
                     )
                     self.bk.health = self.bk.pokemon.pokemonData.hp
 
+                    self.echo_to_spectators(Message.dict_to_message(loopDict))
+
                     if not self.send_battle_setup():
                         self.terminate_battle()
                     else:
@@ -96,6 +105,7 @@ class HostPeer:
                 # acknowledgement known as the defense announce
                 case "ATTACK_ANNOUNCE":
                     self.bk.foeMove = Data.moveDictionary[loopDict["move_name"].lower()]
+                    self.echo_to_spectators(Message.dict_to_message(loopDict))
                     if not self.send_defense_announce():
                         self.terminate_battle()
                     else:
@@ -148,6 +158,7 @@ class HostPeer:
                 # since this the end of the 4 way acknowledgement
                 # we just need to update the enemy hp
                 case "CALCULATION_CONFIRM":
+                    self.echo_to_spectators(Message.dict_to_message(loopDict))
                     self.apply_enemy_hp_update()
                     if self.bk.foeHealth <= 0:
                         if not self.send_game_over():
@@ -204,6 +215,7 @@ class HostPeer:
                 # if we receive a game over message it means that
                 # our pokemon fainted and the program shits down
                 case "GAME_OVER":
+                    self.echo_to_spectators(Message.dict_to_message(loopDict))
                     print(f"{loopDict['loser']} is unable to battle.")
                     print(f"The winner of this match is {loopDict['winner']}")
                     print("Program shutting down...")
@@ -228,7 +240,11 @@ class HostPeer:
 
     def send_handshake_response(self) -> bool:
         message = HandshakeResponse(0).to_message_format()
-        return self.connection.send(message=message, addr=self.battlerAddress)
+        return self.connection.send(message, self.battlerAddress)
+
+    def send_spectator_response(self, addr) -> bool:
+        message = HandshakeResponse(0).to_message_format()
+        return self.connection.send(message, addr)
 
     def send_battle_setup(self) -> bool:
         sb = StatBoost(5, 5)
@@ -236,15 +252,17 @@ class HostPeer:
         message = BattleSetup(
             0, pokemon_name=self.bk.pokemon.pokemonData.name, stat_boosts=sb
         ).to_message_format()
-        return self.connection.send(message=message, addr=self.battlerAddress)
+        self.echo_to_spectators(message)
+        return self.connection.send(message, self.battlerAddress)
 
     def send_attack_announce(self) -> bool:
         message = AttackAnnounce(0, move_name=self.bk.move.name).to_message_format()
-        return self.connection.send(message=message, addr=self.battlerAddress)
+        self.echo_to_spectators(message)
+        return self.connection.send(message, self.battlerAddress)
 
     def send_defense_announce(self) -> bool:
         message = DefenseAnnounce(0).to_message_format()
-        return self.connection.send(message=message, addr=self.battlerAddress)
+        return self.connection.send(message, self.battlerAddress)
 
     def send_calculation_report(self) -> bool:
         a = self.bk.pokemon.pokemonData.name
@@ -268,11 +286,13 @@ class HostPeer:
             defender_hp_remaining=tempEnemyHP,
             status_message=tempMessage,
         ).to_message_format()
-        return self.connection.send(message=message, addr=self.battlerAddress)
+        self.echo_to_spectators(message)
+        return self.connection.send(message, self.battlerAddress)
 
     def send_calculation_confirm(self):
         message = CalculationConfirm(0).to_message_format()
-        return self.connection.send(message=message, addr=self.battlerAddress)
+        self.echo_to_spectators(message)
+        return self.connection.send(message, self.battlerAddress)
 
     def send_resolution_request(self):
         self.bk.foeDamage, multiplier = self.bk.pokemon.defender_calculation(
@@ -286,26 +306,27 @@ class HostPeer:
             damage_dealt=self.bk.foeDamage,
             defender_hp_remaining=tempHP,
         ).to_message_format()
-        return self.connection.send(message=message, addr=self.battlerAddress)
+        return self.connection.send(message, self.battlerAddress)
 
     def send_game_over(self):
         message = GameOver(
             0, winner=self.bk.pokemon.pokemonData.name, loser=self.bk.foe.name
         ).to_message_format()
-        return self.connection.send(message=message, addr=self.battlerAddress)
+        self.echo_to_spectators(message)
+        return self.connection.send(message, self.battlerAddress)
 
     def send_continue(self):
         message = Continue(0).to_message_format()
-        return self.connection.send(message=message, addr=self.battlerAddress)
+        return self.connection.send(message, self.battlerAddress)
 
     def send_host_ready(self):
         message = HostReady(0).to_message_format()
-        return self.connection.send(message=message, addr=self.battlerAddress)
+        return self.connection.send(message, self.battlerAddress)
 
     def apply_enemy_hp_update(self):
         self.bk.foeHealth -= self.bk.damage
         print(
-            f"Enemy {self.bk.foe.name} took {self.bk.damage}! {max(self.bk.foeHealth, 0)} healthremaining!"
+            f"Enemy {self.bk.foe.name} took {self.bk.damage}! {max(self.bk.foeHealth, 0)} health remaining!"
         )
 
     def apply_own_hp_update(self):
@@ -313,3 +334,8 @@ class HostPeer:
         print(
             f"Your {self.bk.pokemon.pokemonData.name} took {self.bk.foeDamage}! {max(self.bk.health, 0)} health remaining!"
         )
+
+    def echo_to_spectators(self, message: str):
+        for addr in self.connection.connected_peers.keys():
+            if addr != self.battlerAddress:
+                self.connection.send(message, addr)

@@ -24,31 +24,19 @@ class IO:
         print('2] Connector - waits for a host to send a battle request')
 
     @staticmethod
-    def get_conncector_peer_role(battlerAvailable: bool) -> int:
-        if battlerAvailable:
-            print('Choose a role as a non-host:')
-            print('1] Spectator')
-            print('2] Battler')
-            
-            answer = int(input('Please enter the number of your choice: '))
-            while answer not in range(1, 3):
-                try:
-                    answer = int(input('Please enter the number of your choice: '))
-                except ValueError:
-                    print("Invalid input. Please enter a number (1 or 2)")
-                    answer = -1
-            return answer
-        else:
-            print('Choose a role as a non-host:')
-            print('1] Spectator')
-            answer = int(input('Please enter the number of your choice: '))
-            while answer not in range(1, 2):
-                try:
-                    answer = int(input('Please enter the number of your choice: '))
-                except ValueError:
-                    print("Invalid input. Please enter 1")
-                    answer = -1
-            return answer
+    def get_connector_role() -> int:
+        print('Choose a role as a non-host:')
+        print('1] Spectator')
+        print('2] Battler')
+
+        answer = int(input('Please enter the number of your choice: '))
+        while answer not in range(1, 3):
+            try:
+                answer = int(input('Please enter the number of your choice: '))
+            except ValueError:
+                print("Invalid input. Please enter a number (1 or 2)")
+                answer = -1
+        return answer
 
     @staticmethod
     def ask_pokemon() -> str:
@@ -64,9 +52,18 @@ class IO:
         print('What moves do you want your pokemon to have?')
         print('Choose from the list below:')
         IO.print_moves()
-        answer = input('Enter 4 appropriate numbers separated by commas: ')
-        while not IO.is_four_ints(answer):
+        while True:
             answer = input('Enter 4 appropriate numbers separated by commas: ')
+            try:
+                nums = [int(x) for x in answer.split(',')]
+            except ValueError:
+                continue
+            check = lambda x: 0 < x <= 36
+            if len(nums) != 4 or len(nums) != len(set(nums)):
+                continue
+            if not all(check(x) for x in nums):
+                continue
+            break
         return answer
 
     @staticmethod
@@ -83,11 +80,6 @@ class IO:
                 row = ""
 
             number += 1
-
-    @staticmethod
-    def is_four_ints(input: str) -> bool:
-        pattern = r'^\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*\d+\s*$'
-        return bool(re.match(pattern, input))
 
     @staticmethod
     def choose_attack(pokemonName: str, moveTuple: tuple[Move]) -> int:

@@ -6,7 +6,6 @@ from Pokemon import Pokemon
 from Messages import (
     HandshakeRequest,
     HandshakeResponse,
-    SpectatorRequest,
     BattleSetup,
     AttackAnnounce,
     DefenseAnnounce,
@@ -14,7 +13,6 @@ from Messages import (
     CalculationConfirm,
     ResolutionRequest,
     GameOver,
-    ChatMessage,
     StatBoost,
     Continue,
     BattlerNotification,
@@ -22,40 +20,23 @@ from Messages import (
 import random
 
 random.seed(4)
-
-
-class ConnectorPeer:
-    battlerAvailable = True
-
-    def __init__(self):
-        self.connection = PeerConnection(0)
-        # Binding to 0 makes the systen select an available port
-        print("Waiting for host broadcast...")
-        self.connection.wait_for_broadcast()
-        choice = IO.get_conncector_peer_role(ConnectorPeer.battlerAvailable)
-        match choice:
-            case 1:
-                pass
-                # insert code for spectator
-            case 2:
-                ConnectorPeer.battlerAvailable = False
-                while True:
-                    try:
-                        if not self.send_battler_notification():
-                            self.terminate_battle()
-                        else:
-                            self.bk = BattlerKit()
-                            break
-                    except Exception:
-                        print(f"{Exception}")
-                self.main_loop()
-
-    def main_loop(self):
-        loopDict = {}
-
+class JoinerPeer:
+    def __init__(self, connection: PeerConnection):
+        self.connection = connection
         while True:
-            print(self.connection.receive_sequence_number)
+            try:
+                if not self.send_battler_notification():
+                    self.terminate_battle()
+                else:
+                    self.bk = BattlerKit()
+                    break
+            except Exception:
+                print(f"{Exception}")
+        self.battler_loop()
 
+    def battler_loop(self):
+        loopDict = {}
+        while True:
             # get the message from receive and store it in out tempDict
             loopDict = self.connection.receive()
 
@@ -329,7 +310,7 @@ class ConnectorPeer:
     def apply_enemy_hp_update(self):
         self.bk.foeHealth -= self.bk.damage
         print(
-            f"Enemy {self.bk.foe.name} took {self.bk.damage}! {max(self.bk.foeHealth, 0)} healthremaining!"
+            f"Enemy {self.bk.foe.name} took {self.bk.damage}! {max(self.bk.foeHealth, 0)} health remaining!"
         )
 
     def apply_own_hp_update(self):

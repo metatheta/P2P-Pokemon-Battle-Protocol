@@ -93,7 +93,8 @@ class LogicalConnection:
                     self.send_ack(addr, self.receive_sequence_number)
                     self.receive_sequence_number += 1
                     self.log("Matching ACK received")
-                    received["sender_addr"] = addr
+                    if received.get("sender_addr") is None:
+                        received["sender_addr"] = addr
                     return received
                 elif (
                     int(received.get("sequence_number")) < self.receive_sequence_number
@@ -303,7 +304,8 @@ class HostConnection(LogicalConnection):
                 if incoming == expected:
                     self.send_ack(addr, ack_num=incoming)
                     self.connected_peers[addr] += 1
-                    received["sender_addr"] = addr
+                    if received.get("sender_addr") is None:
+                        received["sender_addr"] = addr
                     return received
                 elif incoming < expected:
                     # Duplicate packet, resend ACK
@@ -351,6 +353,3 @@ class PeerConnection(LogicalConnection):
         if ack_num is None:
             ack_num = addr_or_ack_num
         super().send_ack(self.host_addr, ack_num)
-
-
-# TODO add verbose mode flag to make most of this logging optional

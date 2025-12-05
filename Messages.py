@@ -28,6 +28,12 @@ class Message:
                 tempDict[key.strip()] = value.strip()
         return tempDict
 
+    @staticmethod
+    def dict_to_message(data: dict) -> str:
+        result = ""
+        for key, value in data.items():
+            result += f"{key}: {value}\n"
+        return result
 
 @dataclass
 class DiscoveryBroadcast(Message):
