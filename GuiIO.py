@@ -1,7 +1,109 @@
-from tkinter import simpledialog, messagebox
+import tkinter as tk
+from tkinter import messagebox
 import queue
+import time
 from Data import Data
 from Templates import Move
+
+
+class NonModalDialog:
+    """A non-modal dialog that doesn't block the main window."""
+
+    def __init__(
+        self, title, prompt, dialog_type="string", minvalue=None, maxvalue=None
+    ):
+        self.result = None
+        self.dialog = tk.Toplevel()
+        self.dialog.title(title)
+        self.dialog_type = dialog_type
+        self.minvalue = minvalue
+        self.maxvalue = maxvalue
+
+        # Center the dialog
+        self.dialog.geometry("400x150")
+        self.dialog.transient()  # Float on top but don't block
+
+        # Prompt label
+        tk.Label(
+            self.dialog, text=prompt, wraplength=350, justify="left", padx=10, pady=10
+        ).pack()
+
+        # Entry field
+        self.entry = tk.Entry(self.dialog, width=40)
+        self.entry.pack(padx=10, pady=5)
+        self.entry.focus_set()
+
+        # Buttons frame
+        btn_frame = tk.Frame(self.dialog)
+        btn_frame.pack(pady=10)
+
+        ok_btn = tk.Button(btn_frame, text="OK", command=self._on_ok, width=10)
+        ok_btn.pack(side="left", padx=5)
+
+        cancel_btn = tk.Button(
+            btn_frame, text="Cancel", command=self._on_cancel, width=10
+        )
+        cancel_btn.pack(side="left", padx=5)
+
+        # Bind Enter key
+        self.entry.bind("<Return>", lambda e: self._on_ok())
+
+        # Don't use grab_set() - this is what makes dialogs modal
+        # self.dialog.grab_set()
+
+    def _on_ok(self):
+        value = self.entry.get()
+
+        if self.dialog_type == "integer":
+            try:
+                int_value = int(value)
+                if self.minvalue is not None and int_value < self.minvalue:
+                    messagebox.showwarning(
+                        "Invalid", f"Value must be at least {self.minvalue}"
+                    )
+                    return
+                if self.maxvalue is not None and int_value > self.maxvalue:
+                    messagebox.showwarning(
+                        "Invalid", f"Value must be at most {self.maxvalue}"
+                    )
+                    return
+                self.result = int_value
+            except ValueError:
+                messagebox.showwarning("Invalid", "Please enter a valid integer")
+                return
+        else:
+            self.result = value
+
+        self.dialog.destroy()
+
+    def _on_cancel(self):
+        self.result = None
+        self.dialog.destroy()
+
+    def show(self):
+        """Show the dialog and wait for result while keeping the main loop responsive."""
+        # Instead of wait_window() which blocks, we poll the dialog state
+        # This allows the main event loop to continue processing chat updates
+        while self.dialog.winfo_exists():
+            try:
+                # Update both the dialog AND the main root window
+                # This ensures chat messages and other updates continue to process
+                self.dialog.update()
+                if GuiIO.root:
+                    GuiIO.root.update()
+                    # Also process idle tasks to ensure chat messages are shown
+                    GuiIO.root.update_idletasks()
+
+                # Manually trigger chat update if callback is registered
+                if GuiIO.chat_update_callback:
+                    GuiIO.chat_update_callback()
+
+                # Small sleep to prevent CPU spinning
+                time.sleep(0.01)
+            except tk.TclError:
+                # Dialog was destroyed
+                break
+        return self.result
 
 
 class GuiIO:
@@ -13,6 +115,7 @@ class GuiIO:
     result_queue = queue.Queue()
     root = None
     status_callback = None
+    chat_update_callback = None  # New callback for chat updates
 
     @staticmethod
     def set_root(root):
@@ -22,6 +125,11 @@ class GuiIO:
     def register_status_callback(callback):
         """Register a callback to update the battle status UI."""
         GuiIO.status_callback = callback
+
+    @staticmethod
+    def register_chat_update_callback(callback):
+        """Register a callback to update chat messages."""
+        GuiIO.chat_update_callback = callback
 
     @staticmethod
     def update_battle_status(
@@ -64,17 +172,18 @@ class GuiIO:
     def get_role() -> int:
         def _ask_role():
             while True:
-                result = simpledialog.askinteger(
+                dialog = NonModalDialog(
                     "Role Selection",
                     "Choose your role:\n1] Host\n2] Connector (Joiner/Spectator)",
-                    parent=GuiIO.root,
+                    dialog_type="integer",
                     minvalue=1,
                     maxvalue=2,
                 )
+                result = dialog.show()
                 if result is not None:
                     return result
                 messagebox.showwarning(
-                    "Required", "You must select a role to continue!", parent=GuiIO.root
+                    "Required", "You must select a role to continue!"
                 )
 
         return GuiIO._request_input(_ask_role)
@@ -87,17 +196,18 @@ class GuiIO:
     def get_connector_role() -> int:
         def _ask_connector():
             while True:
-                result = simpledialog.askinteger(
+                dialog = NonModalDialog(
                     "Connector Role",
                     "Choose your role:\n1] Spectator\n2] Battler",
-                    parent=GuiIO.root,
+                    dialog_type="integer",
                     minvalue=1,
                     maxvalue=2,
                 )
+                result = dialog.show()
                 if result is not None:
                     return result
                 messagebox.showwarning(
-                    "Required", "You must select a role to continue!", parent=GuiIO.root
+                    "Required", "You must select a role to continue!"
                 )
 
         return GuiIO._request_input(_ask_connector)
@@ -105,9 +215,8 @@ class GuiIO:
     @staticmethod
     def ask_pokemon() -> str:
         def _ask_poke():
-            name = simpledialog.askstring(
-                "Pokemon Selection", "Enter Pokemon Name:", parent=GuiIO.root
-            )
+            dialog = NonModalDialog("Pokemon Selection", "Enter Pokemon Name:")
+            name = dialog.show()
             return name
 
         while True:
@@ -115,9 +224,7 @@ class GuiIO:
             if not name or not name.strip():
 
                 def show_warning():
-                    messagebox.showwarning(
-                        "Required", "You must enter a Pokemon name!", parent=GuiIO.root
-                    )
+                    messagebox.showwarning("Required", "You must enter a Pokemon name!")
 
                 GuiIO._execute_on_main_thread(show_warning)
                 continue
@@ -125,20 +232,18 @@ class GuiIO:
                 return name.lower()
 
             def show_error():
-                messagebox.showerror(
-                    "Error", f"Pokemon '{name}' not found!", parent=GuiIO.root
-                )
+                messagebox.showerror("Error", f"Pokemon '{name}' not found!")
 
             GuiIO._execute_on_main_thread(show_error)
 
     @staticmethod
     def ask_move() -> str:
         def _ask_moves():
-            return simpledialog.askstring(
+            dialog = NonModalDialog(
                 "Move Selection",
                 "Enter 4 move numbers (1-36) separated by commas:\n(Check console/log for list)",
-                parent=GuiIO.root,
             )
+            return dialog.show()
 
         print("Available Moves:")
         GuiIO.print_moves()
@@ -148,9 +253,7 @@ class GuiIO:
             if not answer or not answer.strip():
 
                 def show_warning():
-                    messagebox.showwarning(
-                        "Required", "You must enter move numbers!", parent=GuiIO.root
-                    )
+                    messagebox.showwarning("Required", "You must enter move numbers!")
 
                 GuiIO._execute_on_main_thread(show_warning)
                 continue
@@ -162,9 +265,7 @@ class GuiIO:
 
                 def show_error():
                     messagebox.showerror(
-                        "Error",
-                        "Invalid format! Use numbers separated by commas.",
-                        parent=GuiIO.root,
+                        "Error", "Invalid format! Use numbers separated by commas."
                     )
 
                 GuiIO._execute_on_main_thread(show_error)
@@ -177,11 +278,7 @@ class GuiIO:
                 print("Must select exactly 4 unique moves.")
 
                 def show_error():
-                    messagebox.showerror(
-                        "Error",
-                        "Must select exactly 4 unique moves!",
-                        parent=GuiIO.root,
-                    )
+                    messagebox.showerror("Error", "Must select exactly 4 unique moves!")
 
                 GuiIO._execute_on_main_thread(show_error)
                 continue
@@ -190,9 +287,7 @@ class GuiIO:
 
                 def show_error():
                     messagebox.showerror(
-                        "Error",
-                        "Move numbers must be between 1 and 36!",
-                        parent=GuiIO.root,
+                        "Error", "Move numbers must be between 1 and 36!"
                     )
 
                 GuiIO._execute_on_main_thread(show_error)
@@ -223,15 +318,14 @@ class GuiIO:
                 for i, move in enumerate(m_tuple):
                     msg += f"{i + 1}] {move.name} ({move.category}, {move.moveType})\n"
 
-                result = simpledialog.askinteger(
-                    "Choose Attack", msg, parent=GuiIO.root, minvalue=1, maxvalue=4
+                dialog = NonModalDialog(
+                    "Choose Attack", msg, dialog_type="integer", minvalue=1, maxvalue=4
                 )
+                result = dialog.show()
                 if result is not None:
                     return result
                 messagebox.showwarning(
-                    "Required",
-                    "You must select an attack to continue!",
-                    parent=GuiIO.root,
+                    "Required", "You must select an attack to continue!"
                 )
 
         result = GuiIO._request_input(_choose, pokemonName, moveTuple)
@@ -243,12 +337,11 @@ class GuiIO:
 
         def _ask():
             while True:
-                result = simpledialog.askstring(title, prompt, parent=GuiIO.root)
+                dialog = NonModalDialog(title, prompt)
+                result = dialog.show()
                 if result and result.strip():
                     return result.strip()
-                messagebox.showwarning(
-                    "Required", "You must enter a name to continue!", parent=GuiIO.root
-                )
+                messagebox.showwarning("Required", "You must enter a name to continue!")
 
         return GuiIO._request_input(_ask)
 

@@ -133,6 +133,9 @@ class GuiGame:
         # Register battle status callback
         GuiIO.register_status_callback(self.update_battle_ui)
 
+        # Register chat update callback
+        GuiIO.register_chat_update_callback(self.check_chat_queue)
+
         # New: BATTLE STATUS FRAME (Top of Game Log)
         self.battle_status_frame = tk.Frame(game_frame, bg="#2c3e50", pady=5)
         self.battle_status_frame.pack(fill="x", side="top", before=self.log_text)
