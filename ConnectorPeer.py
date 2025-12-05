@@ -3,7 +3,6 @@ from IO import IO
 from BattlerKit import BattlerKit
 from Data import Data
 from Pokemon import Pokemon
-from SQ import SQ
 from Messages import HandshakeRequest, HandshakeResponse, SpectatorRequest, BattleSetup, AttackAnnounce, DefenseAnnounce,CalculationReport, CalculationConfirm, ResolutionRequest, GameOver, ChatMessage, StatBoost, Continue, BattlerNotification
 import random
 random.seed(4)
@@ -206,31 +205,31 @@ class ConnectorPeer():
         return self.connection.send(message)
     
     def send_handshake_response(self) -> bool:
-        SQ.sequence_number += 1
-        message = HandshakeResponse(sequence_number=SQ.sequence_number).to_message_format()
+        
+        message = HandshakeResponse(self.connection.send_sequence_number).to_message_format()
         return self.connection.send(message)
 
     def send_battle_setup(self) -> bool:
         sb = StatBoost(5,5)
-        SQ.sequence_number += 1
-        message = BattleSetup(sequence_number=SQ.sequence_number,
+        
+        message = BattleSetup(self.connection.send_sequence_number,
                             pokemon_name=self.bk.pokemon.pokemonData.name,
                             stat_boosts=sb
                             ).to_message_format()
         return self.connection.send(message)
 
     def send_attack_announce(self) -> bool:
-        SQ.sequence_number += 1
-        message = AttackAnnounce(sequence_number=SQ.sequence_number, move_name=self.bk.move.name).to_message_format()
+        
+        message = AttackAnnounce(self.connection.send_sequence_number, move_name=self.bk.move.name).to_message_format()
         return self.connection.send(message)
 
     def send_defense_announce(self) -> bool:
-        SQ.sequence_number += 1
-        message = DefenseAnnounce(sequence_number=SQ.sequence_number).to_message_format()
+        
+        message = DefenseAnnounce(self.connection.send_sequence_number).to_message_format()
         return self.connection.send(message)
 
     def send_calculation_report(self) -> bool:
-        SQ.sequence_number += 1
+        
         a = self.bk.pokemon.pokemonData.name
         b = self.bk.move.name
         self.bk.damage, multiplier = self.bk.pokemon.attacker_calculation(b, self.bk.foe.name)
@@ -241,7 +240,7 @@ class ConnectorPeer():
         elif multiplier <= 0.5:
             tempMessage += ' It was not very effective...'
 
-        message = CalculationReport(sequence_number=SQ.sequence_number,
+        message = CalculationReport(self.connection.send_sequence_number,
                                     attacker=a,
                                     move_used=b,
                                     remaining_health=self.bk.health,
@@ -252,15 +251,15 @@ class ConnectorPeer():
         return self.connection.send(message)
 
     def send_calculation_confirm(self):
-        SQ.sequence_number += 1
-        message = CalculationConfirm(sequence_number=SQ.sequence_number).to_message_format()
+        
+        message = CalculationConfirm(self.connection.send_sequence_number).to_message_format()
         return self.connection.send(message)
 
     def send_resolution_request(self):
-        SQ.sequence_number += 1
+        
         self.bk.foeDamage, multiplier = Pokemon.defender_calculation(self.bk.foeMove.name, self.bk.foe.name)
         tempHP = self.bk.health - self.bk.foeDamage
-        message = ResolutionRequest(sequence_number=SQ.sequence_number,
+        message = ResolutionRequest(self.connection.send_sequence_number,
                                     attacker=self.bk.foe.name,
                                     move_used=self.bk.foeMove.name,
                                     damage_dealt=self.bk.foeDamage,
@@ -269,21 +268,21 @@ class ConnectorPeer():
         return self.connection.send(message)
     
     def send_game_over(self):
-        SQ.sequence_number += 1
-        message = GameOver(sequence_number=SQ.sequence_number,
+        
+        message = GameOver(self.connection.send_sequence_number,
                         winner=self.bk.pokemon.pokemonData.name,
                         loser=self.bk.foe.name
                         ).to_message_format()
         return self.connection.send(message)
 
     def send_continue(self):
-        SQ.sequence_number += 1
-        message = Continue(sequence_number=SQ.sequence_number).to_message_format()
+        
+        message = Continue(self.connection.send_sequence_number).to_message_format()
         return self.connection.send(message)
     
     def send_battler_notification(self):
-        SQ.sequence_number += 1
-        message = BattlerNotification(sequence_number=SQ.sequence_number).to_message_format()
+        
+        message = BattlerNotification(self.connection.send_sequence_number).to_message_format()
         return self.connection.send(message)
 
     def apply_enemy_hp_update(self):
