@@ -19,6 +19,12 @@ from Messages import (
     HostReady,
     Message,
 )
+import random
+
+random.seed(1)
+
+# Debug simulation flag
+simulate_damage_mismatch = False
 
 
 # wrapper class for a host connection and battler
@@ -186,7 +192,7 @@ class HostPeer:
                 # check if the recalculated damage matches the
                 # received damage, if it does we send an ack and
                 # update enemy health on our end, if it still doesnt
-                # then we terminate the battle
+                # then we termine the battle
                 case "RESOLUTION_REQUEST":
                     self.bk.damage, multiplier = self.bk.pokemon.attacker_calculation(
                         self.bk.move.name, self.bk.foe.name
@@ -279,7 +285,16 @@ class HostPeer:
         self.bk.damage, multiplier = self.bk.pokemon.attacker_calculation(
             b, self.bk.foe.name
         )
-        tempEnemyHP = self.bk.foeHealth - self.bk.damage
+
+        # Damage mismatch simulation
+        reported_damage = self.bk.damage
+        if simulate_damage_mismatch:
+            reported_damage = self.bk.damage + 10
+            print(
+                f"SIMULATION: Reporting incorrect damage {reported_damage} instead of {self.bk.damage}"
+            )
+
+        tempEnemyHP = self.bk.foeHealth - reported_damage
         tempMessage = f"{a} used {b}!"
         if multiplier >= 2:
             tempMessage += " It was super effective!"
@@ -291,7 +306,7 @@ class HostPeer:
             attacker=a,
             move_used=b,
             remaining_health=self.bk.health,
-            damage_dealt=self.bk.damage,
+            damage_dealt=reported_damage,
             defender_hp_remaining=tempEnemyHP,
             status_message=tempMessage,
         ).to_message_format()

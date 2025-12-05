@@ -219,6 +219,36 @@ class GuiGame:
         )
         verbose_check.pack(side="right", padx=10)
 
+        # Packet Loss Simulation Toggle
+        self.packet_loss_enabled = tk.BooleanVar(value=False)
+        packet_loss_check = tk.Checkbutton(
+            control_frame,
+            text="Simulate Packet Loss",
+            variable=self.packet_loss_enabled,
+            bg="#34495e",
+            fg="white",
+            selectcolor="#2c3e50",
+            activebackground="#34495e",
+            activeforeground="white",
+            command=self.toggle_packet_loss,
+        )
+        packet_loss_check.pack(side="right", padx=10)
+
+        # Damage Mismatch Simulation Toggle
+        self.damage_mismatch_enabled = tk.BooleanVar(value=False)
+        damage_mismatch_check = tk.Checkbutton(
+            control_frame,
+            text="Simulate Damage Mismatch",
+            variable=self.damage_mismatch_enabled,
+            bg="#34495e",
+            fg="white",
+            selectcolor="#2c3e50",
+            activebackground="#34495e",
+            activeforeground="white",
+            command=self.toggle_damage_mismatch,
+        )
+        damage_mismatch_check.pack(side="right", padx=10)
+
         # Start button (Moved into existing control_frame creation flow logic)
         self.start_btn = tk.Button(
             control_frame,
@@ -346,6 +376,26 @@ class GuiGame:
             status = "ENABLED" if new_state else "DISABLED"
             print(f"[DEBUG] Verbose logging {status}")
 
+    def toggle_packet_loss(self):
+        """Toggle packet loss simulation."""
+        from Connections import LogicalConnection
+
+        enabled = self.packet_loss_enabled.get()
+        LogicalConnection.simulate_packet_loss = enabled
+        status = "ENABLED" if enabled else "DISABLED"
+        print(f"[SIMULATION] Packet loss simulation {status}")
+
+    def toggle_damage_mismatch(self):
+        """Toggle damage calculation mismatch simulation."""
+        import HostPeer
+        import JoinerPeer
+
+        enabled = self.damage_mismatch_enabled.get()
+        HostPeer.simulate_damage_mismatch = enabled
+        JoinerPeer.simulate_damage_mismatch = enabled
+        status = "ENABLED" if enabled else "DISABLED"
+        print(f"[SIMULATION] Damage mismatch simulation {status}")
+
     def update_battle_ui(
         self, my_name, my_hp, my_max_hp, enemy_name, enemy_hp, enemy_max_hp
     ):
@@ -388,6 +438,7 @@ class GuiGame:
 
     def game_loop(self):
         """The main game loop running in a background thread."""
+        normal_ending = False
         try:
             choice = GuiIO.get_role()
             self.choice = choice
@@ -410,6 +461,7 @@ class GuiGame:
                     print("Starting as Host...")
                     _hostPeer = HostPeer()
                     print("End of the game, thank you for playing")
+                    normal_ending = True
                 case 2:
                     connection = PeerConnection(0, verbose_flag=True)
                     print("Waiting for host broadcast...")
@@ -419,9 +471,11 @@ class GuiGame:
                             case 1:
                                 print("Starting as Spectator...")
                                 _spectator = SpectatorPeer(connection)
+                                normal_ending = True
                             case 2:
                                 print("Starting as Battler...")
                                 _joiner = JoinerPeer(connection)
+                                normal_ending = True
                     else:
                         print("Failed to connect to host!")
         except Exception as e:
@@ -430,8 +484,20 @@ class GuiGame:
 
             traceback.print_exc()
         finally:
-            # Game has ended - start 10 second countdown
-            self.start_shutdown_countdown()
+            # Check if game ended normally by seeing if we completed without error
+            # If HostPeer() or JoinerPeer() completed, normal_ending would be True
+            # For now, always keep GUI open on failure - user must close manually
+            try:
+                # Only shutdown if no exception occurred
+                if "normal_ending" in locals() and normal_ending:
+                    self.start_shutdown_countdown()
+                else:
+                    print("\n" + "=" * 50)
+                    print("=== Game ended ===")
+                    print("Please close the window manually when you're done.")
+                    print("=" * 50)
+            except:
+                pass  # Ensure finally block doesn't fail
 
     def start_chat_host(self):
         """Start chat host in the same window."""

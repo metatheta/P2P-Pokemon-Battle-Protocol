@@ -9,6 +9,7 @@ class LogicalConnection:
     BROADCAST_PORT = 7777
     LOCAL_BIND_IP = "0.0.0.0"
     MAX_RETRANSMITS = 3
+    simulate_packet_loss = False  # Debug simulation flag
 
     def __init__(self, port_number, verbose_flag=False):
         self.port_number = port_number
@@ -32,7 +33,13 @@ class LogicalConnection:
         while True:
             try:
                 self.log(f"Attempt to send to {addr}")
-                self.socket.sendto(message.encode(), addr)
+
+                # Packet loss simulation
+                if LogicalConnection.simulate_packet_loss:
+                    self.log("SIMULATION: Packet dropped (packet loss enabled)")
+                    # Don't send, let it timeout to trigger retransmission
+                else:
+                    self.socket.sendto(message.encode(), addr)
 
                 # Wait for ACK
                 while True:

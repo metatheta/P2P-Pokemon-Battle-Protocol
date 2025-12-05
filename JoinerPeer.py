@@ -21,6 +21,9 @@ import random
 
 random.seed(4)
 
+# Debug simulation flag
+simulate_damage_mismatch = False
+
 
 class JoinerPeer:
     def __init__(self, connection: PeerConnection):
@@ -262,7 +265,16 @@ class JoinerPeer:
         self.bk.damage, multiplier = self.bk.pokemon.attacker_calculation(
             b, self.bk.foe.name
         )
-        tempEnemyHP = self.bk.foeHealth - self.bk.damage
+
+        # Damage mismatch simulation
+        reported_damage = self.bk.damage
+        if simulate_damage_mismatch:
+            reported_damage = self.bk.damage + 10  # Report wrong damage
+            print(
+                f"SIMULATION: Reporting incorrect damage {reported_damage} instead of {self.bk.damage}"
+            )
+
+        tempEnemyHP = self.bk.foeHealth - reported_damage
         tempMessage = f"{a} used {b}!"
         if multiplier >= 2:
             tempMessage += " It was super effective!"
@@ -274,7 +286,7 @@ class JoinerPeer:
             attacker=a,
             move_used=b,
             remaining_health=self.bk.health,
-            damage_dealt=self.bk.damage,
+            damage_dealt=reported_damage,  # Use potentially modified damage
             defender_hp_remaining=tempEnemyHP,
             status_message=tempMessage,
         ).to_message_format()
