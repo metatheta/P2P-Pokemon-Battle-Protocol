@@ -68,10 +68,12 @@ class LogicalConnection:
                 else:
                     self.socket.settimeout(None)
                     self.retransmission_counter = 0
-                    self.log(f"Max retransmits reached, failed to receive ACK")
+                    self.log("Max retransmits reached, failed to receive ACK")
+                    print("Max retransmits reached, failed to receive ACK")
                     return False
             except Exception:
                 self.socket.settimeout(None)
+                print(f'{Exception}')
                 return False
 
     def receive(self) -> dict | None:
@@ -84,10 +86,14 @@ class LogicalConnection:
                 if received.get("message_type") == "ACKNOWLEDGEMENT":
                     continue
 
+                if addr is None:
+                    continue
+
                 if int(received.get("sequence_number")) == self.receive_sequence_number:
                     self.send_ack(addr, self.receive_sequence_number)
                     self.receive_sequence_number += 1
                     self.log("Matching ACK received")
+                    received["sender_addr"] = addr
                     return received
                 elif (
                     int(received.get("sequence_number")) < self.receive_sequence_number
@@ -257,7 +263,8 @@ class HostConnection(LogicalConnection):
         # First, check if there are buffered messages from discovery
         if self.message_buffer:
             buffered_msg, buffered_addr = self.message_buffer.pop(0)
-            print(f"Returning buffered message from {buffered_addr}")
+
+            buffered_msg['sender_addr'] = buffered_addr
 
             # Process the buffered message same as a fresh one
             if buffered_addr not in self.connected_peers:
@@ -296,6 +303,7 @@ class HostConnection(LogicalConnection):
                 if incoming == expected:
                     self.send_ack(addr, ack_num=incoming)
                     self.connected_peers[addr] += 1
+                    received["sender_addr"] = addr
                     return received
                 elif incoming < expected:
                     # Duplicate packet, resend ACK
@@ -323,7 +331,6 @@ class PeerConnection(LogicalConnection):
         )
 
         while True:
-            print("Joiner waiting for host broadcast")
             data, host_temp_addr = broadcast_receiver.recvfrom(
                 LogicalConnection.read_length
             )

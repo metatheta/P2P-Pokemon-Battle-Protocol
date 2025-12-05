@@ -49,7 +49,11 @@ class Acknowledgement(Message):
 class MainMessage(Message):
     sequence_number: int
 
-
+@dataclass
+class HostReady(MainMessage):
+    def __post_init__(self):
+        self.message_type = 'HOST_READY'
+        
 @dataclass
 class HandshakeRequest(MainMessage):
     def __post_init__(self):
