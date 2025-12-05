@@ -26,8 +26,36 @@ class TextRedirector(io.StringIO):
         self.text_widget = text_widget
         self.tag = tag
         self.queue = Queue()
+        self.verbose_enabled = True
+        self.filter_keywords = [
+            "Host sent",
+            "Broadcasting",
+            "Computation",
+            "Dict:",
+            "Battler located",
+            "Calculations confirmed",
+            "Self damage computation",
+            "Enemy damage computation",
+            # UDP/Connections.py verbose messages
+            "Attempt to send",
+            "Timed out, resending",
+            "Message successfully sent",
+            "Matching ACK received",
+            "Duplicate packet",
+            "New peer from",
+            "ACKed",
+            "buffering message",
+            "Timeout reached",
+            "Broadcasted using",
+            "Sent ACK to",
+        ]
 
     def write(self, string):
+        # Filter logic
+        if not self.verbose_enabled:
+            for kw in self.filter_keywords:
+                if kw in string:
+                    return
         self.queue.put(string)
 
     def flush(self):
@@ -101,6 +129,113 @@ class GuiGame:
             insertbackground="white",
         )
         self.log_text.pack(fill="both", expand=True)
+
+        # Register battle status callback
+        GuiIO.register_status_callback(self.update_battle_ui)
+
+        # New: BATTLE STATUS FRAME (Top of Game Log)
+        self.battle_status_frame = tk.Frame(game_frame, bg="#2c3e50", pady=5)
+        self.battle_status_frame.pack(fill="x", side="top", before=self.log_text)
+
+        # Player Side (Left)
+        player_frame = tk.Frame(self.battle_status_frame, bg="#2c3e50")
+        player_frame.pack(side="left", fill="both", expand=True, padx=10)
+
+        self.player_name_label = tk.Label(
+            player_frame,
+            text="Player",
+            font=("Arial", 10, "bold"),
+            fg="#2ecc71",
+            bg="#2c3e50",
+        )
+        self.player_name_label.pack(anchor="w")
+
+        self.player_hp_bar = ttk.Progressbar(
+            player_frame, orient="horizontal", length=150, mode="determinate"
+        )
+        self.player_hp_bar.pack(fill="x", pady=(2, 0))
+
+        self.player_hp_label = tk.Label(
+            player_frame,
+            text="HP: --/--",
+            font=("Consolas", 9),
+            fg="white",
+            bg="#2c3e50",
+        )
+        self.player_hp_label.pack(anchor="w")
+
+        # VS Label
+        tk.Label(
+            self.battle_status_frame,
+            text="VS",
+            font=("Arial", 12, "bold", "italic"),
+            fg="#f1c40f",
+            bg="#2c3e50",
+        ).pack(side="left", padx=5)
+
+        # Enemy Side (Right)
+        enemy_frame = tk.Frame(self.battle_status_frame, bg="#2c3e50")
+        enemy_frame.pack(side="right", fill="both", expand=True, padx=10)
+
+        self.enemy_name_label = tk.Label(
+            enemy_frame,
+            text="Opponent",
+            font=("Arial", 10, "bold"),
+            fg="#e74c3c",
+            bg="#2c3e50",
+        )
+        self.enemy_name_label.pack(anchor="e")
+
+        self.enemy_hp_bar = ttk.Progressbar(
+            enemy_frame, orient="horizontal", length=150, mode="determinate"
+        )
+        self.enemy_hp_bar.pack(fill="x", pady=(2, 0))
+
+        self.enemy_hp_label = tk.Label(
+            enemy_frame,
+            text="HP: --/--",
+            font=("Consolas", 9),
+            fg="white",
+            bg="#2c3e50",
+        )
+        self.enemy_hp_label.pack(anchor="e")
+
+        # CONTROL PANEL UPDATES (Verbose Logging)
+        control_frame = tk.Frame(self.root, bg="#34495e", pady=10)
+        control_frame.pack(fill="x", padx=10, pady=(0, 10))
+
+        # Verbose Toggle
+        self.verbose_enabled = tk.BooleanVar(value=True)
+        verbose_check = tk.Checkbutton(
+            control_frame,
+            text="Verbose Log",
+            variable=self.verbose_enabled,
+            bg="#34495e",
+            fg="white",
+            selectcolor="#2c3e50",
+            activebackground="#34495e",
+            activeforeground="white",
+            command=self.update_redirector_verbosity,
+        )
+        verbose_check.pack(side="right", padx=10)
+
+        # Start button (Moved into existing control_frame creation flow logic)
+        self.start_btn = tk.Button(
+            control_frame,
+            text="Start Game",
+            command=self.start_game,
+            bg="#27ae60",
+            fg="white",
+            font=("Arial", 12, "bold"),
+            padx=20,
+            pady=10,
+        )
+        self.start_btn.pack(side="left", padx=5)
+
+        # Create and configure text redirector
+        self.text_redirector = TextRedirector(self.log_text)
+        self.text_redirector.verbose_enabled = True
+        sys.stdout = self.text_redirector
 
         # RIGHT SIDE - Chat
         chat_frame = tk.Frame(main_container, bg="#34495e")
@@ -179,27 +314,6 @@ class GuiGame:
 
         self.chat_input.bind("<Return>", lambda e: self.send_chat_message())
 
-        # Control panel at bottom
-        control_frame = tk.Frame(self.root, bg="#34495e", pady=10)
-        control_frame.pack(fill="x", padx=10, pady=(0, 10))
-
-        # Start button
-        self.start_btn = tk.Button(
-            control_frame,
-            text="Start Game",
-            command=self.start_game,
-            bg="#27ae60",
-            fg="white",
-            font=("Arial", 12, "bold"),
-            padx=20,
-            pady=10,
-        )
-        self.start_btn.pack(side="left", padx=5)
-
-        # Redirect stdout
-        self.text_redirector = TextRedirector(self.log_text)
-        sys.stdout = self.text_redirector
-
         # Start periodic updates
         self.root.after(100, self.update_log)
         self.root.after(100, self.check_gui_inputs)
@@ -223,6 +337,48 @@ class GuiGame:
             self.check_chat_queue()
 
         self.root.after(100, self.check_gui_inputs)
+
+    def update_redirector_verbosity(self):
+        """Update the text redirector's verbose setting."""
+        if self.text_redirector:
+            new_state = self.verbose_enabled.get()
+            self.text_redirector.verbose_enabled = new_state
+            status = "ENABLED" if new_state else "DISABLED"
+            print(f"[DEBUG] Verbose logging {status}")
+
+    def update_battle_ui(
+        self, my_name, my_hp, my_max_hp, enemy_name, enemy_hp, enemy_max_hp
+    ):
+        """Update the battle status UI."""
+        # Update Player
+        self.player_name_label.config(text=my_name.title())
+        self.player_hp_label.config(text=f"HP: {int(max(0, my_hp))}/{int(my_max_hp)}")
+        self.player_hp_bar["maximum"] = my_max_hp
+        self.player_hp_bar["value"] = max(0, my_hp)
+
+        # Update Enemy
+        self.enemy_name_label.config(text=enemy_name.title())
+        self.enemy_hp_label.config(
+            text=f"HP: {int(max(0, enemy_hp))}/{int(enemy_max_hp)}"
+        )
+        self.enemy_hp_bar["maximum"] = enemy_max_hp
+        self.enemy_hp_bar["value"] = max(0, enemy_hp)
+
+    def start_shutdown_countdown(self):
+        """Start a 10-second countdown before shutting down."""
+        print("\n" + "=" * 50)
+        print("Game ended. Application will close in 10 seconds...")
+        print("=" * 50)
+
+        def countdown(seconds_left):
+            if seconds_left > 0:
+                print(f"Closing in {seconds_left} seconds...")
+                self.root.after(1000, lambda: countdown(seconds_left - 1))
+            else:
+                print("Shutting down...")
+                self.root.quit()
+
+        countdown(10)
 
     def start_game(self):
         """Start the game in a separatethread."""
@@ -255,7 +411,7 @@ class GuiGame:
                     _hostPeer = HostPeer()
                     print("End of the game, thank you for playing")
                 case 2:
-                    connection = PeerConnection(0)
+                    connection = PeerConnection(0, verbose_flag=True)
                     print("Waiting for host broadcast...")
                     if connection.wait_for_broadcast():
                         choice = GuiIO.get_connector_role()
@@ -273,6 +429,9 @@ class GuiGame:
             import traceback
 
             traceback.print_exc()
+        finally:
+            # Game has ended - start 10 second countdown
+            self.start_shutdown_countdown()
 
     def start_chat_host(self):
         """Start chat host in the same window."""

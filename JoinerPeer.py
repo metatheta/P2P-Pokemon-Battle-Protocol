@@ -20,6 +20,8 @@ from Messages import (
 import random
 
 random.seed(4)
+
+
 class JoinerPeer:
     def __init__(self, connection: PeerConnection):
         self.connection = connection
@@ -69,6 +71,15 @@ class JoinerPeer:
                         loopDict["pokemon_name"].lower()
                     ]
                     self.bk.foeHealth = self.bk.foe.hp
+                    # Initial UI Update
+                    IO.update_battle_status(
+                        self.bk.pokemon.pokemonData.name,
+                        self.bk.health,
+                        self.bk.pokemon.pokemonData.hp,
+                        self.bk.foe.name,
+                        self.bk.foeHealth,
+                        self.bk.foe.hp,
+                    )
 
                 # if we receive an attack announce, we send the
                 # acknowledgement known as the defense announce
@@ -312,9 +323,25 @@ class JoinerPeer:
         print(
             f"Enemy {self.bk.foe.name} took {self.bk.damage}! {max(self.bk.foeHealth, 0)} health remaining!"
         )
+        IO.update_battle_status(
+            self.bk.pokemon.pokemonData.name,
+            self.bk.health,
+            self.bk.pokemon.pokemonData.hp,
+            self.bk.foe.name,
+            self.bk.foeHealth,
+            self.bk.foe.hp,
+        )
 
     def apply_own_hp_update(self):
         self.bk.health -= self.bk.foeDamage
         print(
             f"Your {self.bk.pokemon.pokemonData.name} took {self.bk.foeDamage}! {max(self.bk.health, 0)} health remaining!"
+        )
+        IO.update_battle_status(
+            self.bk.pokemon.pokemonData.name,
+            self.bk.health,
+            self.bk.pokemon.pokemonData.hp,
+            self.bk.foe.name,
+            self.bk.foeHealth,
+            self.bk.foe.hp,
         )

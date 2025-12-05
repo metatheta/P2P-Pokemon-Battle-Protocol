@@ -130,3 +130,13 @@ class IO:
                 print("Invalid input. Please enter a number (1, 2, 3, or 4).")
                 choice = -1
         return choice - 1
+
+    @staticmethod
+    def update_battle_status(
+        my_name, my_hp, my_max_hp, enemy_name, enemy_hp, enemy_max_hp
+    ):
+        """Update the battle status UI if in GUI mode."""
+        if _GUI_MODE and _GUI_IO:
+            _GUI_IO.update_battle_status(
+                my_name, my_hp, my_max_hp, enemy_name, enemy_hp, enemy_max_hp
+            )

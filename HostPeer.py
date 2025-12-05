@@ -25,7 +25,7 @@ from Messages import (
 # kit
 class HostPeer:
     def __init__(self):
-        self.connection = HostConnection(8493)
+        self.connection = HostConnection(8493, verbose_flag=True)
         # Binding to 0 makes the system select an available port
         print("Broadcasting and wating for connections...")
         self.connection.discovery_broadcast()
@@ -90,6 +90,15 @@ class HostPeer:
                         self.terminate_battle()
                     else:
                         print("Host sent Battle Setup")
+                        # Initial UI Update
+                        IO.update_battle_status(
+                            self.bk.pokemon.pokemonData.name,
+                            self.bk.health,
+                            self.bk.pokemon.pokemonData.hp,
+                            self.bk.foe.name,
+                            self.bk.foeHealth,
+                            self.bk.foe.hp,
+                        )
                         moveIndex = IO.choose_attack(
                             self.bk.pokemon.pokemonData.name, self.bk.pokemon.moveTuple
                         )
@@ -328,11 +337,27 @@ class HostPeer:
         print(
             f"Enemy {self.bk.foe.name} took {self.bk.damage}! {max(self.bk.foeHealth, 0)} health remaining!"
         )
+        IO.update_battle_status(
+            self.bk.pokemon.pokemonData.name,
+            self.bk.health,
+            self.bk.pokemon.pokemonData.hp,
+            self.bk.foe.name,
+            self.bk.foeHealth,
+            self.bk.foe.hp,
+        )
 
     def apply_own_hp_update(self):
         self.bk.health -= self.bk.foeDamage
         print(
             f"Your {self.bk.pokemon.pokemonData.name} took {self.bk.foeDamage}! {max(self.bk.health, 0)} health remaining!"
+        )
+        IO.update_battle_status(
+            self.bk.pokemon.pokemonData.name,
+            self.bk.health,
+            self.bk.pokemon.pokemonData.hp,
+            self.bk.foe.name,
+            self.bk.foeHealth,
+            self.bk.foe.hp,
         )
 
     def echo_to_spectators(self, message: str):

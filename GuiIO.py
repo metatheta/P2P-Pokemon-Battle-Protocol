@@ -12,10 +12,32 @@ class GuiIO:
     input_queue = queue.Queue()
     result_queue = queue.Queue()
     root = None
+    status_callback = None
 
     @staticmethod
     def set_root(root):
         GuiIO.root = root
+
+    @staticmethod
+    def register_status_callback(callback):
+        """Register a callback to update the battle status UI."""
+        GuiIO.status_callback = callback
+
+    @staticmethod
+    def update_battle_status(
+        my_name, my_hp, my_max_hp, enemy_name, enemy_hp, enemy_max_hp
+    ):
+        """Queue a status update for the main thread."""
+        if GuiIO.status_callback:
+            GuiIO._execute_on_main_thread(
+                GuiIO.status_callback,
+                my_name,
+                my_hp,
+                my_max_hp,
+                enemy_name,
+                enemy_hp,
+                enemy_max_hp,
+            )
 
     @staticmethod
     def _request_input(func, *args, **kwargs):
