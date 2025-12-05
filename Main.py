@@ -14,5 +14,4 @@ if __name__ == '__main__':
             hostPeer = HostPeer()
         case 2:
             connectorPeer = ConnectorPeer()
-            connectorPeer.main_loop()
     

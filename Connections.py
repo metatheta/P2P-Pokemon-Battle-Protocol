@@ -71,9 +71,11 @@ class LogicalConnection:
                     self.socket.settimeout(None)
                     self.retransmission_counter = 0
                     self.log("Max retransmits reached, failed to receive ACK")
+                    print("Max retransmits reached, failed to receive ACK")
                     return False
             except Exception:
                 self.socket.settimeout(None)
+                print(f'{Exception}')
                 return False
 
     def receive(self) -> dict | None:
@@ -84,6 +86,9 @@ class LogicalConnection:
                 received = Message.from_message_format(received_str)
 
                 if received.get("message_type") == "ACKNOWLEDGEMENT":
+                    continue
+
+                if addr is None:
                     continue
 
                 if int(received.get("sequence_number")) == self.receive_sequence_number:
@@ -261,6 +266,8 @@ class HostConnection(LogicalConnection):
         if self.message_buffer:
             buffered_msg, buffered_addr = self.message_buffer.pop(0)
             print(f"Returning buffered message from {buffered_addr}")
+
+            buffered_msg['sender_addr'] = buffered_addr
 
             # Process the buffered message same as a fresh one
             if buffered_addr not in self.connected_peers:

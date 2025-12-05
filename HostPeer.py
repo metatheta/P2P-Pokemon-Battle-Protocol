@@ -4,16 +4,14 @@ from IO import IO
 from Data import Data
 from Pokemon import Pokemon
 from SQ import SQ
-from Messages import HandshakeResponse, SpectatorRequest, BattleSetup, AttackAnnounce, DefenseAnnounce,CalculationReport, CalculationConfirm, ResolutionRequest, GameOver, ChatMessage, StatBoost, Continue
-
+from Messages import HandshakeResponse, SpectatorRequest, BattleSetup, AttackAnnounce, DefenseAnnounce,CalculationReport, CalculationConfirm, ResolutionRequest, GameOver, ChatMessage, StatBoost, Continue, HostReady
 # wrapper class for a host connection and battler
 # kit
 class HostPeer:
     def __init__(self):
         self.connection = HostConnection(8168)
         self.connection.discovery_broadcast()
-        self.battlerAddress = self.connection.receive().get('sender_addr')
-        print(f'done getting battler addr: {self.battlerAddress}')
+        print('done broadcasting')
         self.bk = BattlerKit()
         print('done making battler kit')
         self.main_loop()
@@ -24,13 +22,20 @@ class HostPeer:
         
         while True:
             print('--- ENTERED WHILE TRUE---')
+            print(self.connection.receive_sequence_number)
+
             # get the message from receive and store it in out tempDict
             loopDict = self.connection.receive()
-
             print('--- DONE RECEIVING ---')
+
             # we call different methods depending on the result 
             # of the switch statement
             match loopDict['message_type']:
+
+                case 'BATTLER_NOTIFICATION':
+                    self.connection.send_ack(int(loopDict['sequence_number']))
+                    self.battlerAddress = self.connection.receive().get('sender_addr')
+                    print(f'done getting battler addr: {self.battlerAddress}')
 
                 # if we receive a handshake request, then we send a 
                 # handshake response
@@ -261,9 +266,13 @@ class HostPeer:
         message = Continue(sequence_number=SQ.sequence_number).to_message_format()
         return self.connection.send(message=message, addr=self.battlerAddress)
     
+    def send_host_ready(self):
+        SQ.sequence_number += 1
+        message = HostReady(sequence_number=SQ.sequence_number).to_message_format()
+        return self.connection.send(message=message, addr=self.battlerAddress)
+    
     def apply_enemy_hp_update(self):
         self.bk.foeHealth -= self.bk.damage
 
     def apply_own_hp_update(self):
         self.bk.health -= self.bk.foeDamage
-    

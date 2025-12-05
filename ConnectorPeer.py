@@ -22,28 +22,31 @@ class ConnectorPeer():
                 # insert code for spectator
             case 2:
                 ConnectorPeer.battlerAvailable = False
-                if not self.send_battler_notification():
-                    self.terminate_battle()
-                else: 
-                    print('battler notification sent')
-                self.bk = BattlerKit()
-                print('done making battler kit')
+                while True:
+                    try:
+                        if not self.send_battler_notification():
+                            self.terminate_battle()
+                        else: 
+                            print('battler notification sent')
+                            break
+                        self.bk = BattlerKit()
+                        print('done making battler kit')
+                    except Exception:
+                        print(f'{Exception}')
+                self.main_loop()
 
     def main_loop(self):
         print("--- MAIN LOOP STARTED ---")
         loopDict = {}
 
-        if not self.send_handshake_request():
-            self.terminate_battle()
-        else:
-            print('Joiner sent Handsake Request')
-        
         while True:
             print('--- ENTERED WHILE TRUE---')
+            print(self.connection.receive_sequence_number)
+            
             # get the message from receive and store it in out tempDict
             loopDict = self.connection.receive()
-
             print('--- DONE RECEIVING ---')
+
             # we call different methods depending on the result 
             # of the switch statement
             match loopDict['message_type']:
@@ -177,6 +180,13 @@ class ConnectorPeer():
                     self.bk.move = Data.moveDictionary[self.bk.pokemon.moveTuple[moveIndex].name.lower()]
                     if not self.send_attack_announce():
                         self.terminate_battle()
+
+                case 'HOST_READY':
+                    self.connection.send_ack(int(loopDict['sequence_number']))
+                    if not self.send_handshake_request():
+                        self.terminate_battle()
+                    else:
+                        print('Joiner sent Handsake Request')
     """
     # if we receive a chat message, we first check if
     # its text or a sticker, idk what to do from there
