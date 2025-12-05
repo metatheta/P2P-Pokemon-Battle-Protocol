@@ -13,6 +13,10 @@ from SpectatorPeer import SpectatorPeer
 from GuiIO import GuiIO
 import GuiIO as IO  # Backend code expects IO module
 
+# Import modules for simulation flags
+import HostPeer as HostPeerModule
+import JoinerPeer as JoinerPeerModule
+
 # Chat imports
 import chat_host
 import chat_client
@@ -390,12 +394,9 @@ class GuiGame:
 
     def toggle_damage_mismatch(self):
         """Toggle damage calculation mismatch simulation."""
-        import HostPeer
-        import JoinerPeer
-
         enabled = self.damage_mismatch_enabled.get()
-        HostPeer.simulate_damage_mismatch = enabled
-        JoinerPeer.simulate_damage_mismatch = enabled
+        HostPeerModule.simulate_damage_mismatch = enabled
+        JoinerPeerModule.simulate_damage_mismatch = enabled
         status = "ENABLED" if enabled else "DISABLED"
         print(f"[SIMULATION] Damage mismatch simulation {status}")
 
