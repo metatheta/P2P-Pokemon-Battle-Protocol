@@ -24,7 +24,9 @@ from Messages import (
 # kit
 class HostPeer:
     def __init__(self):
-        self.connection = HostConnection(8168)
+        self.connection = HostConnection(8493)
+        # Binding to 0 makes the system select an available port
+        print("Broadcasting and wating for connections...")
         self.connection.discovery_broadcast()
         self.bk = BattlerKit()
         self.main_loop()
@@ -33,8 +35,6 @@ class HostPeer:
         loopDict = {}
 
         while True:
-            print(self.connection.receive_sequence_number)
-
             # get the message from receive and store it in out tempDict
             loopDict = self.connection.receive()
 
@@ -222,16 +222,6 @@ class HostPeer:
                     if not self.send_attack_announce():
                         self.terminate_battle()
 
-    """
-    # if we receive a chat message, we first check if
-    # its text or a sticker, idk what to do from there
-    case 'CHAT_MESSAGE':
-        match loopDict['content_type']:
-            case 'TEXT':
-            
-            case 'STICKER':
-    """
-
     def terminate_battle(self):
         print("Connection lost... battle over... shutting down...")
         self.connection.close()
@@ -314,6 +304,12 @@ class HostPeer:
 
     def apply_enemy_hp_update(self):
         self.bk.foeHealth -= self.bk.damage
+        print(
+            f"Enemy {self.bk.foe.name} took {self.bk.damage}! {max(self.bk.foeHealth, 0)} healthremaining!"
+        )
 
     def apply_own_hp_update(self):
         self.bk.health -= self.bk.foeDamage
+        print(
+            f"Your {self.bk.pokemon.pokemonData.name} took {self.bk.foeDamage}! {max(self.bk.health, 0)} health remaining!"
+        )

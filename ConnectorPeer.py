@@ -28,7 +28,9 @@ class ConnectorPeer:
     battlerAvailable = True
 
     def __init__(self):
-        self.connection = PeerConnection(random.randint(6000, 9999))
+        self.connection = PeerConnection(0)
+        # Binding to 0 makes the systen select an available port
+        print("Waiting for host broadcast...")
         self.connection.wait_for_broadcast()
         choice = IO.get_conncector_peer_role(ConnectorPeer.battlerAvailable)
         match choice:
@@ -224,16 +226,6 @@ class ConnectorPeer:
                     else:
                         print("Joiner sent Handsake Request")
 
-    """
-    # if we receive a chat message, we first check if
-    # its text or a sticker, idk what to do from there
-    case 'CHAT_MESSAGE':
-        match loopDict['content_type']:
-            case 'TEXT':
-            
-            case 'STICKER':
-    """
-
     def terminate_battle(self):
         print("Connection lost... battle over... shutting down...")
         # self.connection.close()
@@ -336,6 +328,12 @@ class ConnectorPeer:
 
     def apply_enemy_hp_update(self):
         self.bk.foeHealth -= self.bk.damage
+        print(
+            f"Enemy {self.bk.foe.name} took {self.bk.damage}! {max(self.bk.foeHealth, 0)} healthremaining!"
+        )
 
     def apply_own_hp_update(self):
         self.bk.health -= self.bk.foeDamage
+        print(
+            f"Your {self.bk.pokemon.pokemonData.name} took {self.bk.foeDamage}! {max(self.bk.health, 0)} health remaining!"
+        )
