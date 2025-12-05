@@ -314,15 +314,16 @@ def create_gui():
     return root
 
 
-def main():
-    global chat_host, host_name, available_stickers
+# Load available stickers at module level
+sticker_dir = os.path.join(os.path.dirname(__file__), "stickers")
+if os.path.exists(sticker_dir):
+    available_stickers = glob.glob(os.path.join(sticker_dir, "*.png"))
+    available_stickers.extend(glob.glob(os.path.join(sticker_dir, "*.jpg")))
+    available_stickers.extend(glob.glob(os.path.join(sticker_dir, "*.gif")))
 
-    # Load available stickers
-    sticker_dir = os.path.join(os.path.dirname(__file__), "stickers")
-    if os.path.exists(sticker_dir):
-        available_stickers = glob.glob(os.path.join(sticker_dir, "*.png"))
-        available_stickers.extend(glob.glob(os.path.join(sticker_dir, "*.jpg")))
-        available_stickers.extend(glob.glob(os.path.join(sticker_dir, "*.gif")))
+
+def main():
+    global chat_host, host_name
 
     # Create a temporary root for dialogs
     temp_root = tk.Tk()

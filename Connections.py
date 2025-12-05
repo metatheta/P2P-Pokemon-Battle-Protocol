@@ -9,6 +9,7 @@ class LogicalConnection:
     BROADCAST_PORT = 7777
     LOCAL_BIND_IP = "0.0.0.0"
     MAX_RETRANSMITS = 3
+    simulate_packet_loss = False  # Debug simulation flag
 
     def __init__(self, port_number, verbose_flag=False):
         self.port_number = port_number
@@ -32,7 +33,13 @@ class LogicalConnection:
         while True:
             try:
                 self.log(f"Attempt to send to {addr}")
-                self.socket.sendto(message.encode(), addr)
+
+                # Packet loss simulation
+                if LogicalConnection.simulate_packet_loss:
+                    self.log("SIMULATION: Packet dropped (packet loss enabled)")
+                    # Don't send, let it timeout to trigger retransmission
+                else:
+                    self.socket.sendto(message.encode(), addr)
 
                 # Wait for ACK
                 while True:
@@ -56,7 +63,7 @@ class LogicalConnection:
                             self.delimited_message(response_str)
                             return True
                     except socket.timeout:
-                        raise # Re-raise to trigger retransmission logic
+                        raise  # Re-raise to trigger retransmission logic
                     except Exception:
                         # Ignore malformed packets or other errors while waiting for ACK
                         continue
@@ -68,10 +75,11 @@ class LogicalConnection:
                 else:
                     self.socket.settimeout(None)
                     self.retransmission_counter = 0
-                    self.log(f"Max retransmits reached, failed to receive ACK")
+                    self.log("Max retransmits reached, failed to receive ACK")
                     return False
             except Exception:
                 self.socket.settimeout(None)
+                self.log(f"{Exception}")
                 return False
 
     def receive(self) -> dict | None:
@@ -84,10 +92,15 @@ class LogicalConnection:
                 if received.get("message_type") == "ACKNOWLEDGEMENT":
                     continue
 
+                if addr is None:
+                    continue
+
                 if int(received.get("sequence_number")) == self.receive_sequence_number:
                     self.send_ack(addr, self.receive_sequence_number)
                     self.receive_sequence_number += 1
                     self.log("Matching ACK received")
+                    if received.get("sender_addr") is None:
+                        received["sender_addr"] = addr
                     return received
                 elif (
                     int(received.get("sequence_number")) < self.receive_sequence_number
@@ -138,17 +151,16 @@ class LogicalConnection:
             for i, line in enumerate(lines):
                 result += "\t" + line
                 if i != len(lines) - 1:
-                    result += ','
-                result += '\n'
+                    result += ","
+                result += "\n"
             result += "}"
 
             print(result)
 
 
-
 class HostConnection(LogicalConnection):
-    def __init__(self, port_number):
-        super().__init__(port_number)
+    def __init__(self, port_number, verbose_flag=False):
+        super().__init__(port_number, verbose_flag)
         self.connected_peers: dict[tuple[str, int], int] = {}
         self.message_buffer: list[tuple[dict, tuple[str, int]]] = []
         self.send_sequence_numbers: dict[
@@ -257,7 +269,8 @@ class HostConnection(LogicalConnection):
         # First, check if there are buffered messages from discovery
         if self.message_buffer:
             buffered_msg, buffered_addr = self.message_buffer.pop(0)
-            print(f"Returning buffered message from {buffered_addr}")
+
+            buffered_msg["sender_addr"] = buffered_addr
 
             # Process the buffered message same as a fresh one
             if buffered_addr not in self.connected_peers:
@@ -273,7 +286,7 @@ class HostConnection(LogicalConnection):
                 return buffered_msg
             elif incoming < expected:
                 # Duplicate packet (already processed)
-                print(
+                self.log(
                     f"Skipping duplicate buffered packet {incoming} from {buffered_addr}"
                 )
                 return self.receive()  # Recursively check next
@@ -296,10 +309,12 @@ class HostConnection(LogicalConnection):
                 if incoming == expected:
                     self.send_ack(addr, ack_num=incoming)
                     self.connected_peers[addr] += 1
+                    if received.get("sender_addr") is None:
+                        received["sender_addr"] = addr
                     return received
                 elif incoming < expected:
                     # Duplicate packet, resend ACK
-                    print(
+                    self.log(
                         f"Duplicate packet {incoming} received from {addr}, resending ACK"
                     )
                     self.send_ack(addr, ack_num=incoming)
@@ -310,8 +325,8 @@ class HostConnection(LogicalConnection):
 
 
 class PeerConnection(LogicalConnection):
-    def __init__(self, port_number):
-        super().__init__(port_number)
+    def __init__(self, port_number, verbose_flag=False):
+        super().__init__(port_number, verbose_flag)
         self.host_addr = None
 
     def wait_for_broadcast(self) -> bool:
@@ -323,7 +338,6 @@ class PeerConnection(LogicalConnection):
         )
 
         while True:
-            print("Joiner waiting for host broadcast")
             data, host_temp_addr = broadcast_receiver.recvfrom(
                 LogicalConnection.read_length
             )
@@ -344,6 +358,3 @@ class PeerConnection(LogicalConnection):
         if ack_num is None:
             ack_num = addr_or_ack_num
         super().send_ack(self.host_addr, ack_num)
-
-
-# TODO add verbose mode flag to make most of this logging optional
