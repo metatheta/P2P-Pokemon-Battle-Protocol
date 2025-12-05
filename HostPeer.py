@@ -10,23 +10,17 @@ class HostPeer:
     def __init__(self):
         self.connection = HostConnection(8168)
         self.connection.discovery_broadcast()
-        print('done broadcasting')
         self.bk = BattlerKit()
-        print('done making battler kit')
         self.main_loop()
 
     def main_loop(self):
-        print("--- MAIN LOOP STARTED ---")
         loopDict = {}
         
         while True:
-            print('--- ENTERED WHILE TRUE---')
             print(self.connection.receive_sequence_number)
 
             # get the message from receive and store it in out tempDict
             loopDict = self.connection.receive()
-            print('--- DONE RECEIVING ---')
-            print(f'message_type {loopDict['message_type']}')
 
             # we call different methods depending on the result 
             # of the switch statement

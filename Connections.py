@@ -13,9 +13,7 @@ class LogicalConnection:
     def __init__(self, port_number, verbose_flag=False):
         self.port_number = port_number
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        print('done making socket')
         self.socket.bind((LogicalConnection.LOCAL_BIND_IP, self.port_number))
-        print(f'done binding to {self.LOCAL_BIND_IP} and {self.port_number}')
         self.retransmission_counter = 0
         self.send_sequence_number = 0
         self.receive_sequence_number = 0
@@ -265,7 +263,6 @@ class HostConnection(LogicalConnection):
         # First, check if there are buffered messages from discovery
         if self.message_buffer:
             buffered_msg, buffered_addr = self.message_buffer.pop(0)
-            print(f"Returning buffered message from {buffered_addr}")
 
             buffered_msg['sender_addr'] = buffered_addr
 
@@ -334,7 +331,6 @@ class PeerConnection(LogicalConnection):
         )
 
         while True:
-            print("Joiner waiting for host broadcast")
             data, host_temp_addr = broadcast_receiver.recvfrom(
                 LogicalConnection.read_length
             )

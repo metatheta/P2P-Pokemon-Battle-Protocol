@@ -13,7 +13,6 @@ class ConnectorPeer():
     def __init__(self):
         self.connection = PeerConnection(random.randint(6000, 9999))
         self.connection.wait_for_broadcast()
-        print('done waiting for broadcast')
         choice = IO.get_conncector_peer_role(ConnectorPeer.battlerAvailable)
         match choice:
             case 1:
@@ -26,26 +25,20 @@ class ConnectorPeer():
                         if not self.send_battler_notification():
                             self.terminate_battle()
                         else: 
-                            print('battler notification sent')
                             self.bk = BattlerKit()
-                            print('done making battler kit')
                             break
                     except Exception:
                         print(f'{Exception}')
                 self.main_loop()
 
     def main_loop(self):
-        print("--- MAIN LOOP STARTED ---")
         loopDict = {}
 
         while True:
-            print('--- ENTERED WHILE TRUE---')
             print(self.connection.receive_sequence_number)
             
             # get the message from receive and store it in out tempDict
             loopDict = self.connection.receive()
-            print('--- DONE RECEIVING ---')
-            print(f'message_type {loopDict['message_type']}')
 
             # we call different methods depending on the result 
             # of the switch statement
